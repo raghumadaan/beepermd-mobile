@@ -3,11 +3,17 @@ import 'package:beepermd/services/notification_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:workmanager/workmanager.dart';
 
 final  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+ const  fetchBackground = "fetchBackground";
+
+
+
 
 void main() {
+
   runApp(const MyApp());
 }
 

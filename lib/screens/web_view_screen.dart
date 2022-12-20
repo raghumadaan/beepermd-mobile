@@ -4,8 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:workmanager/workmanager.dart';
 
 import '../services/notification_services.dart';
+
+ const  fetchBackground = "fetchBackground";
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    switch (task) {
+      case fetchBackground:
+        print("Callback dispatcher called");
+        NotificationService.showNotifications(title: "BeeperMD", body: "Latitude: {_currentPosition?.latitude} Longitude: {_currentPosition?.longitude}", fln: flutterLocalNotificationsPlugin);
+        break;
+    }
+    return Future.value(true);
+  });
+}
 
 
 final  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -20,7 +36,10 @@ class WebViewContainer extends StatefulWidget {
   createState() => _WebViewContainerState(this.url);
 }
 
+
 class _WebViewContainerState extends State<WebViewContainer> {
+
+
   var _url;
   final _key = UniqueKey();
 
@@ -30,7 +49,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
 
   static const snackBarDuration = Duration(seconds: 3);
 
-  final snackBar = SnackBar(
+  final snackBar = const SnackBar(
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
   );
@@ -40,6 +59,9 @@ class _WebViewContainerState extends State<WebViewContainer> {
   Position? _currentPosition;
   Timer? countdownTimer;
   Duration myDuration = const Duration(days: 5);
+
+ static const  fetchBackground = "fetchBackground";
+
 
   void startTimer() {
     countdownTimer =
@@ -89,10 +111,22 @@ class _WebViewContainerState extends State<WebViewContainer> {
     });
   }
 
+
+
   @override
   void initState() {
     super.initState();
     _handleLocationPermission();
+    Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: true,
+    );
+    Workmanager().registerPeriodicTask(
+      "1",
+      fetchBackground,
+      frequency: const Duration(seconds: 5),
+    );
+
   }
 
   @override
@@ -107,18 +141,27 @@ class _WebViewContainerState extends State<WebViewContainer> {
               javascriptMode: JavascriptMode.unrestricted,
               initialUrl: _url,
               onPageFinished: (String url) {
-                print('Page finished loading: $url');
-                if(url == "http://54.163.228.123/app/schedule" )
-                {
-                  _getCurrentPosition().then((value) => startTimer());
-                }
-                setState(() {
-                  isApiLoaded = false;
-                });
+               try{
+                 print('Page finished loading: $url');
+                 if(url == "http://54.163.228.123/app/schedule" )
+                 {
+                   //     Workmanager().registerPeriodicTask(
+                   //   "1",
+                   //   fetchBackground,
+                   //   frequency: Duration(seconds: 5),
+                   // );
+                   // _getCurrentPosition().then((value) => startTimer());
+                 }
+                 setState(() {
+                   isApiLoaded = false;
+                 });
+               }catch(e){
+                 print("THE ERROR IS $e");
+               }
 
               }),
             isApiLoaded
-                ? Center(
+                ? const Center(
                     child: CircularProgressIndicator(),
                   )
                 : Stack(),
