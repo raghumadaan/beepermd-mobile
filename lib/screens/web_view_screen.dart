@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -42,6 +43,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
 
   var _url;
   final _key = UniqueKey();
+  final service = FlutterBackgroundService();
 
   bool isApiLoaded = true;
 
@@ -126,7 +128,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
       fetchBackground,
       frequency: const Duration(seconds: 5),
     );
-
   }
 
   @override

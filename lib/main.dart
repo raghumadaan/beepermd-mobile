@@ -1,6 +1,7 @@
 import 'package:beepermd/screens/splash_screen.dart';
 import 'package:beepermd/services/notification_services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:workmanager/workmanager.dart';
@@ -13,7 +14,8 @@ final  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 
 
 void main() {
-
+  WidgetsFlutterBinding.ensureInitialized();
+  // FlutterBackgroundService.initialize();
   runApp(const MyApp());
 }
 
