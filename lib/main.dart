@@ -1,21 +1,16 @@
 import 'package:beepermd/screens/splash_screen.dart';
-import 'package:beepermd/services/notification_services.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:workmanager/workmanager.dart';
+
 
 final  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
  const  fetchBackground = "fetchBackground";
 
 
-
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // FlutterBackgroundService.initialize();
   runApp(const MyApp());
 }
 
@@ -27,9 +22,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+
+
   @override
   void initState() {
-    NotificationService.initialize(flutterLocalNotificationsPlugin);
+    // NotificationService.initialize(flutterLocalNotificationsPlugin);
     super.initState();
   }
 
