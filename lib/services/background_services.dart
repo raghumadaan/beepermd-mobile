@@ -2,17 +2,18 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:beepermd/core/data/remote/rest_client.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BackgroundService{
   Future<void> initializeService() async {
     final service = FlutterBackgroundService();
-    /// OPTIONAL, using custom notification channel id
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'my_foreground', // id
       'MY FOREGROUND SERVICE', // title
@@ -42,7 +43,7 @@ class BackgroundService{
         autoStart: true,
         isForegroundMode: true,
         notificationChannelId: 'my_foreground',
-        initialNotificationTitle: 'AWESOME SERVICE',
+        initialNotificationTitle: 'BeeperMD',
         initialNotificationContent: 'Initializing',
         foregroundServiceNotificationId: 888,
       ),
@@ -89,13 +90,18 @@ class BackgroundService{
         if (await service.isForegroundService()) {
           var latitude;
           var longitude;
+          final prefs = await SharedPreferences.getInstance();
+          var session = await prefs.get('Cookie1');
           await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.high)
               .then((Position position) {
             latitude = position.latitude;
             longitude =position.longitude;
-            // setState(() => {_currentPosition = position});
             print("THE CURRENT POSITION IS $position");
+            RestClient().post('doctor/saveDoctorLatLong', session,latitude,longitude,134733);
+
+
+            // RestClient().post('apiName')
           }).catchError((e) {
             debugPrint(e);
           });
@@ -103,19 +109,19 @@ class BackgroundService{
           /// the notification id must be equals with AndroidConfiguration when you call configure() method.
           flutterLocalNotificationsPlugin.show(
             888,
-            'COOL SERVICE',
-            'Time:${DateTime.now()} Latitude ${latitude}',
+            'BeeperMD',
+            'Time:${DateTime.now()} Latitude $latitude',
             const NotificationDetails(
               android: AndroidNotificationDetails(
                 'my_foreground',
-                'MY FOREGROUND SERVICE',
+                'Beeper MD',
                 icon: 'ic_bg_service_small',
               ),
             ),
           );
           service.setForegroundNotificationInfo(
-            title: "My App Service",
-            content: "Time:${DateTime.now()} Latitude: ${latitude}, Longitude : $longitude  Time:${DateTime.now()}",
+            title: "BeeperMD",
+            content: "Time:${DateTime.now()} Latitude: $latitude, Longitude : $longitude  Time:${DateTime.now()}",
           );
         }
       }

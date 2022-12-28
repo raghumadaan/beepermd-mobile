@@ -38,14 +38,19 @@ dependencies:
   get: ^4.6.5
   geolocator: ^9.0.2
   geocoding: ^2.0.5
+  html: ^0.15.1
   flutter_local_notifications: ^13.0.0
-  workmanager: ^0.5.1
   flutter_background_service: ^2.4.6
   device_info_plus: ^8.0.0
   background_location:
     git:
       url: https://github.com/Almoullim/background_location.git
       ref: v0.9.0
+  http: ^0.13.5
+  flutter_inappwebview: ^6.0.0-beta.22
+  shared_preferences: ^2.0.15
+  fluttertoast: ^8.1.2
+
 
 dev_dependencies:
 
@@ -53,6 +58,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^2.0.0
+
 
 flutter:
 

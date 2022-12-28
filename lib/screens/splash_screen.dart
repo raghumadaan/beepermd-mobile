@@ -1,11 +1,9 @@
-import 'package:beepermd/main.dart';
 import 'package:beepermd/screens/web_view_screen.dart';
-import 'package:beepermd/services/notification_services.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class SplashScreen extends StatefulWidget {
-   SplashScreen({Key? key}) : super(key: key);
+   const SplashScreen({Key? key}) : super(key: key);
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -14,14 +12,14 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
  var url ='http://54.163.228.123/app/login/authm/';
 
- NavigateToWebView(){
-   Future.delayed(Duration(milliseconds: 1500)).then((value) => Get.offAll(WebViewContainer(url)));
+ navigateToWebView(){
+   Future.delayed(const Duration(milliseconds: 1500)).then((value) => Get.offAll(WebViewContainer(url)));
  }
 
  @override
   void initState() {
     super.initState();
-    NavigateToWebView();
+    navigateToWebView();
   }
   @override
   Widget build(BuildContext context) {
