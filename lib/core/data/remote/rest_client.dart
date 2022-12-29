@@ -25,9 +25,13 @@ class RestClient{
 
     var url = Uri.parse(BaseURl+apiName);
     final response = await http.Client().post(url,headers: headers,body: body);
+    var jsonResponse = jsonDecode(response.body);
+    print("the json response $jsonResponse");
     Fluttertoast.showToast(
-        msg: response.statusCode ==200?"Success":"Failure",
-        toastLength: Toast.LENGTH_SHORT,
+        msg: "${jsonResponse["message"]}",
+        webPosition: "right",
+        webShowClose: true,
+        toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.TOP,
         timeInSecForIosWeb: 1,
         backgroundColor:response.statusCode ==200? Colors.green:Colors.red,
