@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:beepermd/services/background_services.dart';
-import 'package:beepermd/services/html_parser_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as htmlparser;
+
 
 const fetchBackground = "fetchBackground";
 
@@ -26,10 +29,11 @@ class WebViewContainer extends StatefulWidget {
 class _WebViewContainerState extends State<WebViewContainer> {
   final GlobalKey webViewKey = GlobalKey();
   var _url;
-  bool isApiLoaded = true;
-
   _WebViewContainerState(this._url);
 
+  bool isApiLoaded = true;
+  var userIdForMobileApp;
+  DateTime? backButtonPressTime;
   InAppWebViewController? _webViewController;
   CookieManager _cookieManager = CookieManager.instance();
 
@@ -39,9 +43,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
   );
-
-  DateTime? backButtonPressTime;
-
 
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
@@ -72,18 +73,20 @@ class _WebViewContainerState extends State<WebViewContainer> {
     return true;
   }
 
+  getCookiesAndSaveInPref(String sessionId, WebUri url)async{
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('Cookie1', sessionId);
+  }
+
+  saveUserIDinPrefs(String userId)async{
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userID', userId);
+  }
 
   @override
   void initState() {
     super.initState();
     _handleLocationPermission();
-  }
-
-  getCookiesAndSaveInPref(String sessionId, WebUri url)async{
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('Cookie1', sessionId);
-    var session = await prefs.get('Cookie1');
-    print("SESSION IN PREFV $session");
   }
 
   @override
@@ -101,18 +104,25 @@ class _WebViewContainerState extends State<WebViewContainer> {
               },
               initialUserScripts: UnmodifiableListView<UserScript>([]),
               onLoadStop: ( controller,  url) async {
-                print("THE BASE URL OF BEEPER MD $url");
                 setState(() {
                          isApiLoaded = false;
                        });
                 List<Cookie> cookies = await _cookieManager.getCookies(url: url!);
                 getCookiesAndSaveInPref(cookies[0].value,url);
-                cookies.forEach((cookie) {
-                  print(" THE COOKIES ${cookie.name} ${cookie.value}");
-                });
+                final prefs = await SharedPreferences.getInstance();
+                var sessionID =  prefs.getString('Cookie1');
+                print("THE SESSION ID $sessionID");
+                var header = {"Cookie":"JSESSIONID=$sessionID"};
                 if(url.rawValue == "http://54.163.228.123/app/schedule"){
+                  final response = await http.Client().get(Uri.parse(url.rawValue),headers:header);
+                  print("THE RESPONSE OF Data ${response.body}");
+                  dom.Document document = htmlparser.parse(response.body);
+                  var data = document.getElementById('userIdForMobileApp');
+                  if(data!.attributes.containsValue('userIdForMobileApp')){
+                    userIdForMobileApp = data.attributes['data-value'];
+                    saveUserIDinPrefs(userIdForMobileApp);
+                  }
                     BackgroundService().initializeService();
-                    HTMLParserService().parserMethod();
                 }
                 }
             ),

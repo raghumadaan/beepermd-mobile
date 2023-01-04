@@ -44,33 +44,33 @@ class _SplashScreenState extends State<SplashScreen> {
             SizedBox(
               height: size.height * 0.15,
             ),
-            Center(
-              child: GestureDetector(
-                child: Container(
-                  height: size.height * 0.07,
-                  width: size.width * 0.65,
-                  decoration: BoxDecoration(
-                      color: Color(0xFF73BF2C),
-                      borderRadius: BorderRadius.circular(25)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Get Started",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            ),textAlign: TextAlign.center,
-                      ),
-                      SizedBox(width: size.width*0.02,),
-                      Icon(Icons.arrow_forward,color: Colors.white,size: 25,)
-                    ],
-                  ),
-                ),
-              ),
-
-            ),
+            // Center(
+            //   child: GestureDetector(
+            //     child: Container(
+            //       height: size.height * 0.07,
+            //       width: size.width * 0.65,
+            //       decoration: BoxDecoration(
+            //           color: Color(0xFF73BF2C),
+            //           borderRadius: BorderRadius.circular(25)),
+            //       child: Row(
+            //         mainAxisAlignment: MainAxisAlignment.center,
+            //         children: [
+            //           const Text(
+            //             "Get Started",
+            //             style: TextStyle(
+            //                 color: Colors.white,
+            //                 fontSize: 20,
+            //                 fontWeight: FontWeight.bold,
+            //                 ),textAlign: TextAlign.center,
+            //           ),
+            //           SizedBox(width: size.width*0.02,),
+            //           Icon(Icons.arrow_forward,color: Colors.white,size: 25,)
+            //         ],
+            //       ),
+            //     ),
+            //   ),
+            //
+            // ),
             SizedBox(height: size.height*0.015,),
             Center(
               child: Row(

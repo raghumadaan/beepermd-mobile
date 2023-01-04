@@ -92,13 +92,14 @@ class BackgroundService{
           var longitude;
           final prefs = await SharedPreferences.getInstance();
           var session = await prefs.get('Cookie1');
+          var userId= prefs.get('userID');
           await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.high)
               .then((Position position) {
             latitude = position.latitude;
             longitude =position.longitude;
             print("THE CURRENT POSITION IS $position");
-            RestClient().post('doctor/saveDoctorLatLong', session,latitude,longitude,134733);
+            RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
 
 
             // RestClient().post('apiName')
