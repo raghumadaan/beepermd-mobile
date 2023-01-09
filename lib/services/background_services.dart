@@ -3,15 +3,24 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:beepermd/core/data/remote/rest_client.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as developer;
+
 
 class BackgroundService{
+
+  ConnectivityResult _connectionStatus = ConnectivityResult.none;
+
   Future<void> initializeService() async {
     final service = FlutterBackgroundService();
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -86,12 +95,20 @@ class BackgroundService{
 
     // bring to foreground
     Timer.periodic(const Duration(seconds: 5), (timer) async {
+       Connectivity _connectivity = Connectivity();
+        ConnectivityResult result;
+        try {
+          result = await _connectivity.checkConnectivity();
+        } on PlatformException catch (e) {
+          developer.log('Couldn\'t check connectivity status', error: e);
+          return;
+        }
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           var latitude;
           var longitude;
           final prefs = await SharedPreferences.getInstance();
-          var session = await prefs.get('Cookie1');
+          var session =  prefs.get('Cookie1');
           var userId= prefs.get('userID');
           await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.high)
@@ -99,10 +116,20 @@ class BackgroundService{
             latitude = position.latitude;
             longitude =position.longitude;
             print("THE CURRENT POSITION IS $position");
-            RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
-
-
-            // RestClient().post('apiName')
+            if(result.name!='none'){
+              RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
+            }
+            else{
+              Fluttertoast.showToast(
+                  msg: "${result.name=='none'?"No Internet":'Internet'}",
+                  webPosition: "right",
+                  webShowClose: true,
+                  toastLength: Toast.LENGTH_LONG,
+                  gravity: ToastGravity.TOP,
+                  backgroundColor:result.name=='none'?Colors.red :Colors.green,
+                  textColor: Colors.white,
+                  fontSize: 16.0);
+            }
           }).catchError((e) {
             debugPrint(e);
           });
@@ -114,9 +141,9 @@ class BackgroundService{
             'Time:${DateTime.now()} Latitude $latitude',
             const NotificationDetails(
               android: AndroidNotificationDetails(
-                'my_foreground',
+                'foreground',
                 'Beeper MD',
-                icon: 'ic_bg_service_small',
+                // icon: 'ic_bg_service_small',
               ),
             ),
           );
@@ -126,7 +153,6 @@ class BackgroundService{
           );
         }
       }
-      print('FLUTTER BACKGROUND SERVICE: ${DateTime.now()}');
       // test using external plugin
       final deviceInfo = DeviceInfoPlugin();
       String? device;
@@ -148,5 +174,16 @@ class BackgroundService{
         },
       );
     });
+  }
+
+  Future<void> stopService()async{
+    final service = FlutterBackgroundService();
+    var isRunning = await service.isRunning();
+    if (isRunning) {
+      service.invoke("stopService");
+      print("Logging Out");
+    } else {
+      // service.startService();
+    }
   }
 }
