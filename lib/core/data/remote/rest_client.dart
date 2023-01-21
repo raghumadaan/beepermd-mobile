@@ -16,7 +16,7 @@ class RestClient{
 
     var url = Uri.parse(BaseURl+apiName);
     final response = await http.Client().post(url,headers: headers,body: body);
-    print("THE RESPONSE OF POST ${response.body}" );
+    print("THE RESPONSE OF POST ${response.body} and TIME ${DateTime.now()}" );
     return response;
   }
 }

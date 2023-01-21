@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:background_location/background_location.dart';
 import 'package:beepermd/core/data/remote/rest_client.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -53,6 +54,7 @@ class BackgroundService{
         isForegroundMode: true,
         notificationChannelId: 'my_foreground',
         initialNotificationTitle: 'BeeperMD',
+
         initialNotificationContent: 'Initializing',
         foregroundServiceNotificationId: 888,
       ),
@@ -77,6 +79,7 @@ class BackgroundService{
 
   @pragma('vm:entry-point')
   static void onStart(ServiceInstance service) async {
+    service.invoke('setAsBackground');
     DartPluginRegistrant.ensureInitialized();
     /// OPTIONAL when use custom notification
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -104,7 +107,14 @@ class BackgroundService{
           return;
         }
       if (service is AndroidServiceInstance) {
+
         if (await service.isForegroundService()) {
+          service.on('setAsForeground').listen((event) {
+            FlutterBackgroundService().invoke("setAsForeground");
+          });
+          service.on('setAsBackground').listen((event) {
+            FlutterBackgroundService().invoke("setAsBackground");
+          });
           var latitude;
           var longitude;
           final prefs = await SharedPreferences.getInstance();
@@ -118,6 +128,7 @@ class BackgroundService{
             print("THE CURRENT POSITION IS $position");
             if(result.name!='none'){
               RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
+              DateTime.now();
             }
             else{
               Fluttertoast.showToast(
@@ -131,7 +142,8 @@ class BackgroundService{
                   fontSize: 16.0);
             }
           }).catchError((e) {
-            debugPrint(e);
+
+            debugPrint("THE ERROR IN THE SERIVICE $e");
           });
           /// OPTIONAL for use custom notification
           /// the notification id must be equals with AndroidConfiguration when you call configure() method.
@@ -143,16 +155,36 @@ class BackgroundService{
               android: AndroidNotificationDetails(
                 'foreground',
                 'Beeper MD',
-                // icon: 'ic_bg_service_small',
+                icon: '@mipmap/app_logo',
               ),
             ),
           );
+          // print('Latitude: $latitude, Longitude : $longitude ');
           service.setForegroundNotificationInfo(
             title: "BeeperMD",
             content: "Time:${DateTime.now()} Latitude: $latitude, Longitude : $longitude  Time:${DateTime.now()}",
           );
         }
+
+
       }
+
+       print('Latitude:Longitude 111:working');
+
+       await BackgroundLocation.setAndroidNotification(
+         title: 'Background service is running',
+         message: 'Background location in progress',
+         icon: '@mipmap/app_logo',
+       );
+       await BackgroundLocation.setAndroidConfiguration(1000);
+       await BackgroundLocation.startLocationService();
+       // BackgroundLocation.getLocationUpdates((location) {
+       //     latitude1 = location.latitude.toString();
+       //     longitude2 = location.longitude.toString();
+       //   });
+       // print("THE CURRENT POSITION IN Back $latitude1 and $longitude2");
+
+
       // test using external plugin
       final deviceInfo = DeviceInfoPlugin();
       String? device;
@@ -186,4 +218,10 @@ class BackgroundService{
       // service.startService();
     }
   }
+}
+
+Future<dynamic> getLocation()async{
+  var data = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+  return data;
 }

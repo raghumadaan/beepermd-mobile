@@ -1,5 +1,7 @@
 import 'package:beepermd/screens/web_view_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 
@@ -9,8 +11,9 @@ final  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
  const  fetchBackground = "fetchBackground";
 
 
-void main() {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
