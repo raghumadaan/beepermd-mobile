@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -20,29 +21,23 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 class WebViewContainer extends StatefulWidget {
-  final url;
-
-  const WebViewContainer(this.url);
-
   @override
-  createState() => _WebViewContainerState(this.url);
+  createState() => _WebViewContainerState();
 }
 
 class _WebViewContainerState extends State<WebViewContainer> {
   final GlobalKey webViewKey = GlobalKey();
 
+  PullToRefreshController? pullToRefreshController;
   InAppWebViewController? _webViewController;
 
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
   final Connectivity _connectivity = Connectivity();
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
 
-  var _url;
-
   bool isVisible = true;
   bool isLoading = false;
-
-  _WebViewContainerState(this._url);
+  bool isPageValid = false;
 
   bool isApiLoaded = true;
   var userIdForMobileApp;
@@ -56,34 +51,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
     duration: snackBarDuration,
   );
 
-  Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text('Please allow the location permission to use the app')));
-      return false;
-    }
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied')));
-        return false;
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Location permissions are permanently denied, we cannot request permissions.')));
-      return false;
-    }
-    return true;
-  }
-
   getCookiesAndSaveInPref(String sessionId, WebUri url) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('Cookie1', sessionId);
@@ -94,36 +61,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
     await prefs.setString('userID', userId);
   }
 
-  Future<void> initConnectivity() async {
-    ConnectivityResult result;
-    try {
-      result = await _connectivity.checkConnectivity();
-    } on PlatformException catch (e) {
-      developer.log('Couldn\'t check connectivity status', error: e);
-      return;
-    }
-
-    if (!mounted) {
-      return Future.value(null);
-    }
-
-    return _updateConnectionStatus(result);
-  }
-
-  Future<void> _updateConnectionStatus(ConnectivityResult result) async {
-    setState(() {
-      _connectionStatus = result;
-      if (_connectionStatus.name == 'none') {
-        BackgroundService().stopService();
-      } else {
-        BackgroundService().initializeService();
-      }
-    });
-  }
-
   @override
-  void initState()
-  {
+  void initState() {
     super.initState();
 
     Future.delayed(Duration(milliseconds: 1500)).then((value) {
@@ -135,7 +74,20 @@ class _WebViewContainerState extends State<WebViewContainer> {
     initConnectivity();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
-
+    pullToRefreshController = PullToRefreshController(
+        settings: PullToRefreshSettings(
+            color: Colors.blueAccent,
+            enabled: true,
+            backgroundColor: Colors.white),
+        onRefresh: () async {
+          if (Platform.isAndroid) {
+            _webViewController?.reload();
+          } else if (Platform.isIOS) {
+            _webViewController?.loadUrl(
+                urlRequest:
+                    URLRequest(url: await _webViewController?.getUrl()));
+          }
+        });
   }
 
   @override
@@ -151,16 +103,27 @@ class _WebViewContainerState extends State<WebViewContainer> {
                 child: _connectionStatus.name != "none"
                     ? InAppWebView(
                         key: webViewKey,
-                  initialUrlRequest: URLRequest(
-                      url: WebUri(
-                          'http://54.163.228.123/app/login/authm/')),
+                        initialSettings: InAppWebViewSettings(
+                            supportZoom: false, useHybridComposition: true,
+                        disableDefaultErrorPage: true),
+                        pullToRefreshController: pullToRefreshController,
 
+                        initialUrlRequest: URLRequest(
+                            url: WebUri(
+                                'http://54.163.228.123/app/login')),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
+
                         onLoadStop: (controller, url) async {
                           setState(() {
                             isApiLoaded = false;
+                              if (url?.hasAbsolutePath==true) {
+                                isPageValid = false;
+                              }
+                              else{
+                                isPageValid = true;
+                              }
                           });
                           initConnectivity();
                           _connectivitySubscription = _connectivity
@@ -173,8 +136,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
                           if (url.rawValue ==
-                              "http://54.163.228.123/app/schedule")
-                          {
+                              "http://54.163.228.123/app/schedule") {
                             _handleLocationPermission();
                             final response = await http.Client()
                                 .get(Uri.parse(url.rawValue), headers: header);
@@ -193,7 +155,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
                             BackgroundService().stopService();
                           }
                         },
-                      )
+
+                        )
                     : BeeperMDWidget(),
               );
             }),
@@ -218,6 +181,14 @@ class _WebViewContainerState extends State<WebViewContainer> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+            Positioned(
+              child: Visibility(
+                visible: isPageValid,
+                child: const SafeArea(
+                  child: BeeperMDWidget2(),
                 ),
               ),
             ),
@@ -248,6 +219,61 @@ class _WebViewContainerState extends State<WebViewContainer> {
       return false;
     }
     return true;
+  }
+
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Please allow the location permission to use the app')));
+      return false;
+    }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied')));
+        return false;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Location permissions are permanently denied, we cannot request permissions.')));
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> initConnectivity() async {
+    ConnectivityResult result;
+    try {
+      result = await _connectivity.checkConnectivity();
+    } on PlatformException catch (e) {
+      developer.log('Couldn\'t check connectivity status', error: e);
+      return;
+    }
+
+    if (!mounted) {
+      return Future.value(null);
+    }
+
+    return _updateConnectionStatus(result);
+  }
+
+  Future<void> _updateConnectionStatus(ConnectivityResult result) async {
+    setState(() {
+      _connectionStatus = result;
+      if (_connectionStatus.name == 'none') {
+        BackgroundService().stopService();
+      } else {
+        BackgroundService().initializeService();
+      }
+    });
   }
 }
 
@@ -292,6 +318,60 @@ class BeeperMDWidget extends StatelessWidget {
             ),
             const Text(
               "No Internet\nConnection",
+              style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 20),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BeeperMDWidget2 extends StatelessWidget {
+  const BeeperMDWidget2({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+    return SafeArea(
+      child: Container(
+        height: size.height,
+        width: size.width,
+        child: Column(
+          children: [
+            SizedBox(
+              height: size.height * 0.13,
+            ),
+            Image.asset(
+              "assets/images/beeper_logo.png",
+              scale: 3,
+            ),
+            SizedBox(
+              height: size.height * 0.06,
+            ),
+            Image.asset(
+              "assets/images/error.png",
+              scale: 3,
+            ),
+            SizedBox(
+              height: size.height * 0.03,
+            ),
+            const Text(
+              "Oops!",
+              style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 40),
+            ),
+            SizedBox(
+              height: size.height * 0.02,
+            ),
+            const Text(
+              "We can't find that \nPage",
+              textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w400,

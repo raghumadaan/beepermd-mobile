@@ -128,7 +128,6 @@ class BackgroundService{
             print("THE CURRENT POSITION IS $position");
             if(result.name!='none'){
               RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
-              DateTime.now();
             }
             else{
               Fluttertoast.showToast(
