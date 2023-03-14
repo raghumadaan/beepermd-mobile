@@ -21,6 +21,8 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 class WebViewContainer extends StatefulWidget {
+  const WebViewContainer({super.key});
+
   @override
   createState() => _WebViewContainerState();
 }
@@ -39,10 +41,12 @@ class _WebViewContainerState extends State<WebViewContainer> {
   bool isLoading = false;
   bool isPageValid = false;
 
+  bool? serviceEnabled;
+
   bool isApiLoaded = true;
   var userIdForMobileApp;
   DateTime? backButtonPressTime;
-  CookieManager _cookieManager = CookieManager.instance();
+  final CookieManager _cookieManager = CookieManager.instance();
 
   static const snackBarDuration = Duration(seconds: 3);
 
@@ -64,13 +68,12 @@ class _WebViewContainerState extends State<WebViewContainer> {
   @override
   void initState() {
     super.initState();
-
-    Future.delayed(Duration(milliseconds: 1500)).then((value) {
-      setState(() {
-        isVisible = false;
-      });
-      return isVisible;
-    });
+    // Future.delayed(const Duration(milliseconds: 1500)).then((value) {
+    //   setState(() {
+    //     isVisible = false;
+    //   });
+    //   return isVisible;
+    // });
     initConnectivity();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
@@ -102,113 +105,119 @@ class _WebViewContainerState extends State<WebViewContainer> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Builder(builder: (context) {
-              return WillPopScope(
-                onWillPop: () => handleWillPop(context),
-                child: _connectionStatus.name != "none"
-                    ?
-                InAppWebView(
-                        key: webViewKey,
-                        initialSettings: InAppWebViewSettings(
-                            supportZoom: false, useHybridComposition: true,
-                        disableDefaultErrorPage: true),
-                        pullToRefreshController: pullToRefreshController,
-
-                        initialUrlRequest: URLRequest(
-                            url: WebUri(
-                                'http://54.163.228.123/app/login')),
-                        onWebViewCreated: (InAppWebViewController controller) {
-                          _webViewController = controller;
-                        },
-                        onLoadStop: (controller, url) async {
-                          setState(() {
-                            isApiLoaded = false;
+    return SafeArea(
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Builder(builder: (context) {
+                return WillPopScope(
+                  onWillPop: () => handleWillPop(context),
+                  child: _connectionStatus.name != "none"
+                      ? InAppWebView(
+                          key: webViewKey,
+                          initialSettings: InAppWebViewSettings(
+                              supportZoom: false,
+                              useHybridComposition: true,
+                              disableDefaultErrorPage: true),
+                          pullToRefreshController: pullToRefreshController,
+                          initialUrlRequest: URLRequest(
+                              url: WebUri('http://54.163.228.123/app/login')),
+                          onWebViewCreated:
+                              (InAppWebViewController controller) {
+                            _webViewController = controller;
+                          },
+                          onLoadStop: (controller, url) async {
+                            setState(() {
+                              isApiLoaded = false;
+                              isVisible = false;
                               // if (url?.hasAbsolutePath==true) {
                               //   isPageValid = false;
                               // }
                               // else{
                               //   isPageValid = true;
                               // }
-                          });
-                          initConnectivity();
-                          _connectivitySubscription = _connectivity
-                              .onConnectivityChanged
-                              .listen(_updateConnectionStatus);
-                          List<Cookie> cookies =
-                              await _cookieManager.getCookies(url: url!);
-                          getCookiesAndSaveInPref(cookies[0].value, url);
-                          final prefs = await SharedPreferences.getInstance();
-                          var sessionID = prefs.getString('Cookie1');
-                          var header = {"Cookie": "JSESSIONID=$sessionID"};
-                          if (url.rawValue ==
-                              "http://54.163.228.123/app/schedule") {
-                            _handleLocationPermission();
-                            final response = await http.Client()
-                                .get(Uri.parse(url.rawValue), headers: header);
-                            dom.Document document =
-                                htmlparser.parse(response.body);
-                            var data =
-                                document.getElementById('userIdForMobileApp');
-                            if (data!.attributes
-                                .containsValue('userIdForMobileApp')) {
-                              userIdForMobileApp =
-                                  data.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
+                            });
+                            initConnectivity();
+                            _connectivitySubscription = _connectivity
+                                .onConnectivityChanged
+                                .listen(_updateConnectionStatus);
+                            List<Cookie> cookies =
+                                await _cookieManager.getCookies(url: url!);
+                            getCookiesAndSaveInPref(cookies[0].value, url);
+                            final prefs = await SharedPreferences.getInstance();
+                            var sessionID = prefs.getString('Cookie1');
+                            var header = {"Cookie": "JSESSIONID=$sessionID"};
+                            if (url.rawValue ==
+                                "http://54.163.228.123/app/schedule") {
+                              final response = await http.Client().get(
+                                  Uri.parse(url.rawValue),
+                                  headers: header);
+                              dom.Document document =
+                                  htmlparser.parse(response.body);
+                              var data =
+                                  document.getElementById('userIdForMobileApp');
+                              if (data?.attributes
+                                  .containsValue('userIdForMobileApp')??false) {
+                                userIdForMobileApp =
+                                    data!.attributes['data-value'];
+                                saveUserIDinPrefs(userIdForMobileApp);
+                              }
+                              _handleLocationPermission();
+                              bool serviceEnabled =
+                                  await Geolocator.isLocationServiceEnabled();
+                              if (serviceEnabled == true) {
+                                BackgroundService().initializeService();
+                              }
+                            } else {
+                              BackgroundService().stopService();
                             }
-                            BackgroundService().initializeService();
-                          } else {
-                            BackgroundService().stopService();
-                          }
-                        },
-
+                          },
                         )
-                    : const BeeperMDWidget(),
-              );
-            }),
-            Positioned(
-              child: Visibility(
-                visible: isVisible,
-                child: SafeArea(
-                  child: Container(
-                    height: size.height,
-                    width: size.width,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(
-                            "assets/images/splahs_background_01.jpg"),
-                        fit: BoxFit.cover,
+                      : const BeeperMDWidget(),
+                );
+              }),
+              Positioned(
+                child: Visibility(
+                  visible: isVisible,
+                  child: SafeArea(
+                    child: Container(
+                      height: size.height,
+                      width: size.width,
+                      decoration: const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage(
+                              "assets/images/splahs_background_01.jpg"),
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        "assets/images/beeper_logo.png",
-                        scale: 3,
+                      child: Center(
+                        child: Image.asset(
+                          "assets/images/beeper_logo.png",
+                          scale: 3,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              child: Visibility(
-                visible: isPageValid,
-                child: const SafeArea(
-                  child: BeeperMDWidget2(),
+              Positioned(
+                child: Visibility(
+                  visible: isPageValid,
+                  child: const SafeArea(
+                    child: BeeperMDWidget2(),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-                child: Visibility(
-              visible: isLoading,
-              child: LinearProgressIndicator(
-                color: Colors.blueAccent,
-              ),
-            ))
-          ],
+              Positioned(
+                  child: Visibility(
+                visible: isLoading,
+                child: LinearProgressIndicator(
+                  color: Colors.blueAccent,
+                ),
+              ))
+            ],
+          ),
         ),
       ),
     );
@@ -231,10 +240,10 @@ class _WebViewContainerState extends State<WebViewContainer> {
   }
 
   Future<bool> _handleLocationPermission() async {
-    bool serviceEnabled;
+    // bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    if (!serviceEnabled!) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
               Text('Please allow the location permission to use the app')));
@@ -280,7 +289,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
       if (_connectionStatus.name == 'none') {
         BackgroundService().stopService();
       } else {
-        BackgroundService().initializeService();
+        // BackgroundService().initializeService();
       }
     });
   }

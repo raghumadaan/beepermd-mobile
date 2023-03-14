@@ -15,7 +15,7 @@ void main() async {
     await InAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
 
-  runApp(MaterialApp(
+  runApp(const MaterialApp(
     home: WebViewContainer(),
     debugShowCheckedModeBanner: false,
   ));

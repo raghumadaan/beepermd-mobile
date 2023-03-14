@@ -131,7 +131,7 @@ class BackgroundService{
             }
             else{
               Fluttertoast.showToast(
-                  msg: "${result.name=='none'?"No Internet":'Internet'}",
+                  msg: result.name=='none'?"No Internet":'Internet',
                   webPosition: "right",
                   webShowClose: true,
                   toastLength: Toast.LENGTH_LONG,
@@ -140,12 +140,11 @@ class BackgroundService{
                   textColor: Colors.white,
                   fontSize: 16.0);
             }
-          }).catchError((e) {
-
-            debugPrint("THE ERROR IN THE SERIVICE $e");
+          }
+          ).catchError((e) {
+            FlutterBackgroundService().invoke('stopService');
+            debugPrint("THE ERROR IN THE SERVICE $e");
           });
-          /// OPTIONAL for use custom notification
-          /// the notification id must be equals with AndroidConfiguration when you call configure() method.
           flutterLocalNotificationsPlugin.show(
             888,
             'BeeperMD',
@@ -197,7 +196,9 @@ class BackgroundService{
           "device": device,
         },
       );
-    });
+    }
+
+    );
   }
 
   Future<void> stopService()async{
