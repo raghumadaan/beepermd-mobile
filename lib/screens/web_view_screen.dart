@@ -90,6 +90,15 @@ class _WebViewContainerState extends State<WebViewContainer> {
         });
   }
 
+  Future<bool> isUrlValid(String url) async {
+    try {
+      var response = await http.head(Uri.parse(url));
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -101,7 +110,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
               return WillPopScope(
                 onWillPop: () => handleWillPop(context),
                 child: _connectionStatus.name != "none"
-                    ? InAppWebView(
+                    ?
+                InAppWebView(
                         key: webViewKey,
                         initialSettings: InAppWebViewSettings(
                             supportZoom: false, useHybridComposition: true,
@@ -114,16 +124,15 @@ class _WebViewContainerState extends State<WebViewContainer> {
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
-
                         onLoadStop: (controller, url) async {
                           setState(() {
                             isApiLoaded = false;
-                              if (url?.hasAbsolutePath==true) {
-                                isPageValid = false;
-                              }
-                              else{
-                                isPageValid = true;
-                              }
+                              // if (url?.hasAbsolutePath==true) {
+                              //   isPageValid = false;
+                              // }
+                              // else{
+                              //   isPageValid = true;
+                              // }
                           });
                           initConnectivity();
                           _connectivitySubscription = _connectivity
@@ -157,7 +166,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
                         },
 
                         )
-                    : BeeperMDWidget(),
+                    : const BeeperMDWidget(),
               );
             }),
             Positioned(

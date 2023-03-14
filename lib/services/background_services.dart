@@ -168,8 +168,6 @@ class BackgroundService{
 
       }
 
-       print('Latitude:Longitude 111:working');
-
        await BackgroundLocation.setAndroidNotification(
          title: 'Background service is running',
          message: 'Background location in progress',
@@ -177,11 +175,6 @@ class BackgroundService{
        );
        await BackgroundLocation.setAndroidConfiguration(1000);
        await BackgroundLocation.startLocationService();
-       // BackgroundLocation.getLocationUpdates((location) {
-       //     latitude1 = location.latitude.toString();
-       //     longitude2 = location.longitude.toString();
-       //   });
-       // print("THE CURRENT POSITION IN Back $latitude1 and $longitude2");
 
 
       // test using external plugin
