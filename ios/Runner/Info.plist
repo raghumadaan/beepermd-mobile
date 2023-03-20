@@ -29,9 +29,15 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app needs access to location when open.</string>
+    <string>This app needs access to location in the background.</string>
     <key>NSLocationAlwaysUsageDescription</key>
     <string>This app needs access to location when in the background.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app needs access to location when open and in the background.</string>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>dev.flutter.background.refresh</string>
+    </array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
