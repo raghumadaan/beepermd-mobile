@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:flutter_background_service_ios/flutter_background_service_ios.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -92,6 +93,14 @@ class BackgroundService{
         service.setAsBackgroundService();
       });
     }
+    else if(service is IOSServiceInstance){
+      service.on('start').listen((event) {
+        service.invoke('start');
+      });
+      service.on('setBackgroundFetchResult').listen((event) {
+        service.invoke('setBackgroundFetchResult');
+      });
+    }
     service.on('stopService').listen((event) {
       service.stopSelf();
     });
@@ -164,9 +173,61 @@ class BackgroundService{
           );
         }
 
+      }
+      else{
+        if (await service.on('isServiceRunning')==true) {
+          service.on('start').listen((event) {
+            FlutterBackgroundService().invoke("start");
+          });
+          service.on('setBackgroundFetchResult').listen((event) {
+            FlutterBackgroundService().invoke("setBackgroundFetchResult");
+          });
+          var latitude;
+          var longitude;
+          final prefs = await SharedPreferences.getInstance();
+          var session =  prefs.get('Cookie1');
+          var userId= prefs.get('userID');
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high)
+              .then((Position position) {
+            latitude = position.latitude;
+            longitude =position.longitude;
+            print("THE CURRENT POSITION IS $position");
+            if(result.name!='none'){
+              RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
+            }
+            else{
+              Fluttertoast.showToast(
+                  msg: result.name=='none'?"No Internet":'Internet',
+                  webPosition: "right",
+                  webShowClose: true,
+                  toastLength: Toast.LENGTH_LONG,
+                  gravity: ToastGravity.TOP,
+                  backgroundColor:result.name=='none'?Colors.red :Colors.green,
+                  textColor: Colors.white,
+                  fontSize: 16.0);
+            }
+          }
+          ).catchError((e) {
+            FlutterBackgroundService().invoke('stopService');
+            debugPrint("THE ERROR IN THE SERVICE $e");
+          });
+          flutterLocalNotificationsPlugin.show(
+            888,
+            'BeeperMD',
+            'Time:${DateTime.now()} Latitude $latitude',
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'foreground',
+                'Beeper MD',
+                icon: '@mipmap/app_logo',
+              ),
+            ),
+          );
+          // print('Latitude: $latitude, Longitude : $longitude ');
+        }
 
       }
-
        await BackgroundLocation.setAndroidNotification(
          title: 'Background service is running',
          message: 'Background location in progress',

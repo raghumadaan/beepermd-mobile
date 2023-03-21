@@ -113,66 +113,68 @@ class _WebViewContainerState extends State<WebViewContainer> {
               return WillPopScope(
                 onWillPop: () => handleWillPop(context),
                 child: _connectionStatus.name != "none"
-                    ? InAppWebView(
-                        key: webViewKey,
-                        initialSettings: InAppWebViewSettings(
-                            supportZoom: false,
-                            useHybridComposition: true,
-                            disableDefaultErrorPage: true),
-                        pullToRefreshController: pullToRefreshController,
-                        initialUrlRequest: URLRequest(
-                            url: WebUri('http://54.163.228.123/app/login')),
-                        onWebViewCreated:
-                            (InAppWebViewController controller) {
-                          _webViewController = controller;
-                        },
-                        onLoadStop: (controller, url) async {
-                          setState(() {
-                            isApiLoaded = false;
-                            isVisible = false;
-                            // if (url?.hasAbsolutePath==true) {
-                            //   isPageValid = false;
-                            // }
-                            // else{
-                            //   isPageValid = true;
-                            // }
-                          });
-                          initConnectivity();
-                          _connectivitySubscription = _connectivity
-                              .onConnectivityChanged
-                              .listen(_updateConnectionStatus);
-                          List<Cookie> cookies =
-                              await _cookieManager.getCookies(url: url!);
-                          getCookiesAndSaveInPref(cookies[0].value, url);
-                          final prefs = await SharedPreferences.getInstance();
-                          var sessionID = prefs.getString('Cookie1');
-                          var header = {"Cookie": "JSESSIONID=$sessionID"};
-                          if (url.rawValue ==
-                              "http://54.163.228.123/app/schedule") {
-                            final response = await http.Client().get(
-                                Uri.parse(url.rawValue),
-                                headers: header);
-                            dom.Document document =
-                                htmlparser.parse(response.body);
-                            var data =
-                                document.getElementById('userIdForMobileApp');
-                            if (data?.attributes
-                                .containsValue('userIdForMobileApp')??false) {
-                              userIdForMobileApp =
-                                  data!.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
+                    ? SafeArea(
+                      child: InAppWebView(
+                          key: webViewKey,
+                          initialSettings: InAppWebViewSettings(
+                              supportZoom: false,
+                              useHybridComposition: true,
+                              disableDefaultErrorPage: true),
+                          pullToRefreshController: pullToRefreshController,
+                          initialUrlRequest: URLRequest(
+                              url: WebUri('http://54.163.228.123/app/login')),
+                          onWebViewCreated:
+                              (InAppWebViewController controller) {
+                            _webViewController = controller;
+                          },
+                          onLoadStop: (controller, url) async {
+                            setState(() {
+                              isApiLoaded = false;
+                              isVisible = false;
+                              // if (url?.hasAbsolutePath==true) {
+                              //   isPageValid = false;
+                              // }
+                              // else{
+                              //   isPageValid = true;
+                              // }
+                            });
+                            initConnectivity();
+                            _connectivitySubscription = _connectivity
+                                .onConnectivityChanged
+                                .listen(_updateConnectionStatus);
+                            List<Cookie> cookies =
+                                await _cookieManager.getCookies(url: url!);
+                            getCookiesAndSaveInPref(cookies[0].value, url);
+                            final prefs = await SharedPreferences.getInstance();
+                            var sessionID = prefs.getString('Cookie1');
+                            var header = {"Cookie": "JSESSIONID=$sessionID"};
+                            if (url.rawValue ==
+                                "http://54.163.228.123/app/schedule") {
+                              final response = await http.Client().get(
+                                  Uri.parse(url.rawValue),
+                                  headers: header);
+                              dom.Document document =
+                                  htmlparser.parse(response.body);
+                              var data =
+                                  document.getElementById('userIdForMobileApp');
+                              if (data?.attributes
+                                  .containsValue('userIdForMobileApp')??false) {
+                                userIdForMobileApp =
+                                    data!.attributes['data-value'];
+                                saveUserIDinPrefs(userIdForMobileApp);
+                              }
+                              _handleLocationPermission();
+                              bool serviceEnabled =
+                                  await Geolocator.isLocationServiceEnabled();
+                              if (serviceEnabled == true) {
+                                BackgroundService().initializeService();
+                              }
+                            } else {
+                              BackgroundService().stopService();
                             }
-                            _handleLocationPermission();
-                            bool serviceEnabled =
-                                await Geolocator.isLocationServiceEnabled();
-                            if (serviceEnabled == true) {
-                              BackgroundService().initializeService();
-                            }
-                          } else {
-                            BackgroundService().stopService();
-                          }
-                        },
-                      )
+                          },
+                        ),
+                    )
                     : const BeeperMDWidget(),
               );
             }),
@@ -300,7 +302,7 @@ class BeeperMDWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     return SafeArea(
-      child: Container(
+      child: SizedBox(
         height: size.height,
         width: size.width,
         child: Column(
@@ -353,7 +355,7 @@ class BeeperMDWidget2 extends StatelessWidget {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     return SafeArea(
-      child: Container(
+      child: SizedBox(
         height: size.height,
         width: size.width,
         child: Column(
