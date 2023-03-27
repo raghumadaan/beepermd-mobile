@@ -105,8 +105,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    return SafeArea(
-      child: Scaffold(
+    return Scaffold(
         body: Stack(
           children: [
             Builder(builder: (context) {
@@ -219,8 +218,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
             ))
           ],
         ),
-      ),
-    );
+      );
+
   }
 
   Future<bool> handleWillPop(BuildContext context) async {

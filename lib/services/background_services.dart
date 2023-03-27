@@ -115,9 +115,11 @@ class BackgroundService{
           developer.log('Couldn\'t check connectivity status', error: e);
           return;
         }
-      if (service is AndroidServiceInstance) {
+
+       if (service is AndroidServiceInstance) {
 
         if (await service.isForegroundService()) {
+
           service.on('setAsForeground').listen((event) {
             FlutterBackgroundService().invoke("setAsForeground");
           });
@@ -175,56 +177,55 @@ class BackgroundService{
 
       }
       else{
-        if (await service.on('isServiceRunning')==true) {
-          service.on('start').listen((event) {
-            FlutterBackgroundService().invoke("start");
-          });
-          service.on('setBackgroundFetchResult').listen((event) {
-            FlutterBackgroundService().invoke("setBackgroundFetchResult");
-          });
-          var latitude;
-          var longitude;
-          final prefs = await SharedPreferences.getInstance();
-          var session =  prefs.get('Cookie1');
-          var userId= prefs.get('userID');
-          await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high)
-              .then((Position position) {
-            latitude = position.latitude;
-            longitude =position.longitude;
-            print("THE CURRENT POSITION IS $position");
-            if(result.name!='none'){
-              RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
+        if (service is IOSServiceInstance) {
+          try {
+            var latitude;
+            var longitude;
+            final prefs = await SharedPreferences.getInstance();
+            var session =  prefs.get('Cookie1');
+            var userId= prefs.get('userID');
+            print("THE CURRENT USER $userId");
+            await Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high)
+                .then((Position position) {
+              latitude = position.latitude;
+              longitude =position.longitude;
+              print("THE CURRENT POSITION in iOS IS $position");
+              if(result.name!='none'){
+                RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
+              }
+              else{
+                Fluttertoast.showToast(
+                    msg: result.name=='none'?"No Internet":'Internet',
+                    webPosition: "right",
+                    webShowClose: true,
+                    toastLength: Toast.LENGTH_LONG,
+                    gravity: ToastGravity.TOP,
+                    backgroundColor:result.name=='none'?Colors.red :Colors.green,
+                    textColor: Colors.white,
+                    fontSize: 16.0);
+              }
             }
-            else{
-              Fluttertoast.showToast(
-                  msg: result.name=='none'?"No Internet":'Internet',
-                  webPosition: "right",
-                  webShowClose: true,
-                  toastLength: Toast.LENGTH_LONG,
-                  gravity: ToastGravity.TOP,
-                  backgroundColor:result.name=='none'?Colors.red :Colors.green,
-                  textColor: Colors.white,
-                  fontSize: 16.0);
-            }
-          }
-          ).catchError((e) {
-            FlutterBackgroundService().invoke('stopService');
-            debugPrint("THE ERROR IN THE SERVICE $e");
-          });
-          flutterLocalNotificationsPlugin.show(
-            888,
-            'BeeperMD',
-            'Time:${DateTime.now()} Latitude $latitude',
-            const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'foreground',
-                'Beeper MD',
-                icon: '@mipmap/app_logo',
+            ).catchError((e) {
+              FlutterBackgroundService().invoke('stopService');
+              debugPrint("THE ERROR IN THE SERVICE $e");
+            });
+            flutterLocalNotificationsPlugin.show(
+              888,
+              'BeeperMD',
+              'Time:${DateTime.now()} Latitude $latitude',
+              const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'foreground',
+                  'Beeper MD',
+                  icon: '@mipmap/app_logo',
+                ),
               ),
-            ),
-          );
-          // print('Latitude: $latitude, Longitude : $longitude ');
+            );
+          } on Exception catch(e){
+            debugPrint("THE ERROR IN THE SERVICE $e");
+          }
+            // print('Latitude: $latitude, Longitude : $longitude ');
         }
 
       }
