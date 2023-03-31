@@ -37,7 +37,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
   final Connectivity _connectivity = Connectivity();
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
 
-  bool isVisible = true;
+  bool isVisible = false;
   bool isLoading = false;
   bool isPageValid = false;
 
@@ -68,12 +68,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
   @override
   void initState() {
     super.initState();
-    // Future.delayed(const Duration(milliseconds: 1500)).then((value) {
-    //   setState(() {
-    //     isVisible = false;
-    //   });
-    //   return isVisible;
-    // });
     initConnectivity();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
@@ -130,6 +124,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
                             setState(() {
                               isApiLoaded = false;
                               isVisible = false;
+                              print("Load stop status $isVisible");
                               // if (url?.hasAbsolutePath==true) {
                               //   isPageValid = false;
                               // }
@@ -137,13 +132,20 @@ class _WebViewContainerState extends State<WebViewContainer> {
                               //   isPageValid = true;
                               // }
                             });
+                            pullToRefreshController?.endRefreshing();
                             initConnectivity();
                             _connectivitySubscription = _connectivity
                                 .onConnectivityChanged
                                 .listen(_updateConnectionStatus);
                             List<Cookie> cookies =
                                 await _cookieManager.getCookies(url: url!);
-                            getCookiesAndSaveInPref(cookies[0].value, url);
+                            for (var i = 0; i < cookies.length; i++) {
+                              if(cookies[i].name == 'JSESSIONID'){
+                                getCookiesAndSaveInPref(cookies[i].value, url);
+                              }
+                            }
+
+
                             final prefs = await SharedPreferences.getInstance();
                             var sessionID = prefs.getString('Cookie1');
                             var header = {"Cookie": "JSESSIONID=$sessionID"};
@@ -165,6 +167,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
                               _handleLocationPermission();
                               bool serviceEnabled =
                                   await Geolocator.isLocationServiceEnabled();
+                              print("Is location service enabled $serviceEnabled");
+
                               if (serviceEnabled == true) {
                                 BackgroundService().initializeService();
                               }
@@ -270,6 +274,18 @@ class _WebViewContainerState extends State<WebViewContainer> {
     ConnectivityResult result;
     try {
       result = await _connectivity.checkConnectivity();
+      setState(() {
+        if(isApiLoaded){
+          if(result == ConnectivityResult.mobile ) {
+            isVisible = true;
+          } else if(result == ConnectivityResult.wifi) {
+            isVisible = true;
+          } else {
+            isVisible = false;
+          }
+        }
+      });
+      print("Connection status $isVisible");
     } on PlatformException catch (e) {
       developer.log('Couldn\'t check connectivity status', error: e);
       return;

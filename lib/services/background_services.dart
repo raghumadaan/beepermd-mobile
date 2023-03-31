@@ -10,7 +10,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_background_service_ios/flutter_background_service_ios.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -18,46 +17,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 
-
-class BackgroundService{
-
+class BackgroundService {
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
 
   Future<void> initializeService() async {
     final service = FlutterBackgroundService();
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'my_foreground', // id
-      'MY FOREGROUND SERVICE', // title
-      description:
-      'This channel is used for important notifications.', // description
-      importance: Importance.low, // importance must be at low or higher level
-    );
-
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-    if (Platform.isIOS) {
-      await flutterLocalNotificationsPlugin.initialize(
-        const InitializationSettings(
-          iOS: DarwinInitializationSettings(),
-        ),
-      );
-    }
-
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
         autoStart: true,
         isForegroundMode: true,
-        notificationChannelId: 'my_foreground',
-        initialNotificationTitle: 'BeeperMD',
-
-        initialNotificationContent: 'Initializing',
-        foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(
         // auto start service
@@ -82,9 +51,10 @@ class BackgroundService{
   static void onStart(ServiceInstance service) async {
     service.invoke('setAsBackground');
     DartPluginRegistrant.ensureInitialized();
+
     /// OPTIONAL when use custom notification
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+    // final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    // FlutterLocalNotificationsPlugin();
     if (service is AndroidServiceInstance) {
       service.on('setAsForeground').listen((event) {
         service.setAsForegroundService();
@@ -92,8 +62,7 @@ class BackgroundService{
       service.on('setAsBackground').listen((event) {
         service.setAsBackgroundService();
       });
-    }
-    else if(service is IOSServiceInstance){
+    } else if (service is IOSServiceInstance) {
       service.on('start').listen((event) {
         service.invoke('start');
       });
@@ -116,10 +85,8 @@ class BackgroundService{
           return;
         }
 
-       if (service is AndroidServiceInstance) {
-
+      if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
-
           service.on('setAsForeground').listen((event) {
             FlutterBackgroundService().invoke("setAsForeground");
           });
@@ -129,114 +96,74 @@ class BackgroundService{
           var latitude;
           var longitude;
           final prefs = await SharedPreferences.getInstance();
-          var session =  prefs.get('Cookie1');
-          var userId= prefs.get('userID');
+          var session = prefs.get('Cookie1');
+          var userId = prefs.get('userID');
           await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high)
+                  desiredAccuracy: LocationAccuracy.high)
               .then((Position position) {
             latitude = position.latitude;
-            longitude =position.longitude;
+            longitude = position.longitude;
             print("THE CURRENT POSITION IS $position");
-            if(result.name!='none'){
-              RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
-            }
-            else{
+            if (result.name != 'none') {
+              RestClient().post(
+                  'user/saveLatLong', session, latitude, longitude, userId);
+            } else {
               Fluttertoast.showToast(
-                  msg: result.name=='none'?"No Internet":'Internet',
+                  msg: result.name == 'none' ? "No Internet" : 'Internet',
                   webPosition: "right",
                   webShowClose: true,
                   toastLength: Toast.LENGTH_LONG,
                   gravity: ToastGravity.TOP,
-                  backgroundColor:result.name=='none'?Colors.red :Colors.green,
+                  backgroundColor:
+                      result.name == 'none' ? Colors.red : Colors.green,
                   textColor: Colors.white,
                   fontSize: 16.0);
             }
-          }
-          ).catchError((e) {
+          }).catchError((e) {
             FlutterBackgroundService().invoke('stopService');
             debugPrint("THE ERROR IN THE SERVICE $e");
           });
-          flutterLocalNotificationsPlugin.show(
-            888,
-            'BeeperMD',
-            'Time:${DateTime.now()} Latitude $latitude',
-            const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'foreground',
-                'Beeper MD',
-                icon: '@mipmap/app_logo',
-              ),
-            ),
-          );
-          // print('Latitude: $latitude, Longitude : $longitude ');
-          service.setForegroundNotificationInfo(
-            title: "BeeperMD",
-            content: "Time:${DateTime.now()} Latitude: $latitude, Longitude : $longitude  Time:${DateTime.now()}",
-          );
         }
-
-      }
-      else{
+      } else {
         if (service is IOSServiceInstance) {
           try {
             var latitude;
             var longitude;
             final prefs = await SharedPreferences.getInstance();
-            var session =  prefs.get('Cookie1');
-            var userId= prefs.get('userID');
-            print("THE CURRENT USER $userId");
+            var session = prefs.get('Cookie1');
+            var userId = prefs.get('userID');
             await Geolocator.getCurrentPosition(
-                desiredAccuracy: LocationAccuracy.high)
+                    desiredAccuracy: LocationAccuracy.high)
                 .then((Position position) {
               latitude = position.latitude;
-              longitude =position.longitude;
-              print("THE CURRENT POSITION in iOS IS $position");
-              if(result.name!='none'){
-                RestClient().post('user/saveLatLong', session,latitude,longitude,userId);
-              }
-              else{
+              longitude = position.longitude;
+              if (result.name != 'none') {
+                RestClient().post(
+                    'user/saveLatLong', session, latitude, longitude, userId);
+              } else {
                 Fluttertoast.showToast(
-                    msg: result.name=='none'?"No Internet":'Internet',
+                    msg: result.name == 'none' ? "No Internet" : 'Internet',
                     webPosition: "right",
                     webShowClose: true,
                     toastLength: Toast.LENGTH_LONG,
                     gravity: ToastGravity.TOP,
-                    backgroundColor:result.name=='none'?Colors.red :Colors.green,
+                    backgroundColor:
+                        result.name == 'none' ? Colors.red : Colors.green,
                     textColor: Colors.white,
                     fontSize: 16.0);
               }
-            }
-            ).catchError((e) {
+            }).catchError((e) {
               FlutterBackgroundService().invoke('stopService');
               debugPrint("THE ERROR IN THE SERVICE $e");
             });
-            flutterLocalNotificationsPlugin.show(
-              888,
-              'BeeperMD',
-              'Time:${DateTime.now()} Latitude $latitude',
-              const NotificationDetails(
-                android: AndroidNotificationDetails(
-                  'foreground',
-                  'Beeper MD',
-                  icon: '@mipmap/app_logo',
-                ),
-              ),
-            );
-          } on Exception catch(e){
+          } on Exception catch (e) {
             debugPrint("THE ERROR IN THE SERVICE $e");
           }
-            // print('Latitude: $latitude, Longitude : $longitude ');
+          // print('Latitude: $latitude, Longitude : $longitude ');
         }
-
       }
-       await BackgroundLocation.setAndroidNotification(
-         title: 'Background service is running',
-         message: 'Background location in progress',
-         icon: '@mipmap/app_logo',
-       );
-       await BackgroundLocation.setAndroidConfiguration(1000);
-       await BackgroundLocation.startLocationService();
-
+      await BackgroundLocation.setAndroidConfiguration(1000);
+      await BackgroundLocation.startLocationService();
 
       // test using external plugin
       final deviceInfo = DeviceInfoPlugin();
@@ -258,12 +185,10 @@ class BackgroundService{
           "device": device,
         },
       );
-    }
-
-    );
+    });
   }
 
-  Future<void> stopService()async{
+  Future<void> stopService() async {
     final service = FlutterBackgroundService();
     var isRunning = await service.isRunning();
     if (isRunning) {
@@ -275,7 +200,7 @@ class BackgroundService{
   }
 }
 
-Future<dynamic> getLocation()async{
+Future<dynamic> getLocation() async {
   var data = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high);
   return data;
