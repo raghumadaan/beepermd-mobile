@@ -75,7 +75,7 @@ class BackgroundService {
     });
 
     // bring to foreground
-    Timer.periodic(const Duration(seconds: 5), (timer) async {
+    Timer.periodic(const Duration(seconds: 30), (timer) async {
        Connectivity _connectivity = Connectivity();
         ConnectivityResult result;
         try {
@@ -137,6 +137,7 @@ class BackgroundService {
                 .then((Position position) {
               latitude = position.latitude;
               longitude = position.longitude;
+              print("THE CURRENT POSITION IS $position");
               if (result.name != 'none') {
                 RestClient().post(
                     'user/saveLatLong', session, latitude, longitude, userId);
