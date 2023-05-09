@@ -1,21 +1,23 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
-import 'dart:developer' as developer;
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart' ;
+import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
+// const BASE_URL = 'http://54.163.228.123/'; //STAG
+const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -27,8 +29,11 @@ class WebViewContainer extends StatefulWidget {
   createState() => _WebViewContainerState();
 }
 
-class _WebViewContainerState extends State<WebViewContainer> {
+class _WebViewContainerState extends State<WebViewContainer>
+    with WidgetsBindingObserver {
   final GlobalKey webViewKey = GlobalKey();
+  static const channel = MethodChannel('beepermd.dev/location');
+  bool _isAndroidAppDestroyed = false;
 
   PullToRefreshController? pullToRefreshController;
   InAppWebViewController? _webViewController;
@@ -66,6 +71,13 @@ class _WebViewContainerState extends State<WebViewContainer> {
   }
 
   @override
+  void dispose() {
+    print("called dispose and closed background service");
+    BackgroundService().stopService();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     initConnectivity();
@@ -100,130 +112,128 @@ class _WebViewContainerState extends State<WebViewContainer> {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     return Scaffold(
-        body: Stack(
-          children: [
-            Builder(builder: (context) {
-              return WillPopScope(
-                onWillPop: () => handleWillPop(context),
-                child: _connectionStatus.name != "none"
-                    ? SafeArea(
+      body: Stack(
+        children: [
+          Builder(builder: (context) {
+            return WillPopScope(
+              onWillPop: () => handleWillPop(context),
+              child: _connectionStatus.name != "none"
+                  ? SafeArea(
                       child: InAppWebView(
-                          key: webViewKey,
-                          initialSettings: InAppWebViewSettings(
-                              supportZoom: false,
-                              useHybridComposition: true,
-                              disableDefaultErrorPage: true),
-                          pullToRefreshController: pullToRefreshController,
-                          initialUrlRequest: URLRequest(
-                              url: WebUri('http://54.163.228.123/app/login')),
-                          onWebViewCreated:
-                              (InAppWebViewController controller) {
-                            _webViewController = controller;
-                          },
-                          onLoadStop: (controller, url) async {
-                            setState(() {
-                              isApiLoaded = false;
-                              isVisible = false;
-                              print("Load stop status $isVisible");
-                              // if (url?.hasAbsolutePath==true) {
-                              //   isPageValid = false;
-                              // }
-                              // else{
-                              //   isPageValid = true;
-                              // }
-                            });
-                            pullToRefreshController?.endRefreshing();
-                            initConnectivity();
-                            _connectivitySubscription = _connectivity
-                                .onConnectivityChanged
-                                .listen(_updateConnectionStatus);
-                            List<Cookie> cookies =
-                                await _cookieManager.getCookies(url: url!);
-                            for (var i = 0; i < cookies.length; i++) {
-                              if(cookies[i].name == 'JSESSIONID'){
-                                getCookiesAndSaveInPref(cookies[i].value, url);
-                              }
+                        key: webViewKey,
+                        initialSettings: InAppWebViewSettings(
+                            supportZoom: false,
+                            useHybridComposition: true,
+                            disableDefaultErrorPage: true),
+                        pullToRefreshController: pullToRefreshController,
+                        initialUrlRequest: URLRequest(
+                            url: WebUri('${BASE_URL}patient')),
+                        onWebViewCreated: (InAppWebViewController controller) {
+                          _webViewController = controller;
+                        },
+                        onLoadStop: (controller, url) async {
+                          setState(() {
+                            isApiLoaded = false;
+                            isVisible = false;
+                            print("Load stop status $isVisible");
+                            // if (url?.hasAbsolutePath==true) {
+                            //   isPageValid = false;
+                            // }
+                            // else{
+                            //   isPageValid = true;
+                            // }
+                          });
+                          pullToRefreshController?.endRefreshing();
+                          initConnectivity();
+                          _connectivitySubscription = _connectivity
+                              .onConnectivityChanged
+                              .listen(_updateConnectionStatus);
+                          List<Cookie> cookies =
+                              await _cookieManager.getCookies(url: url!);
+                          for (var i = 0; i < cookies.length; i++) {
+                            if (cookies[i].name == 'JSESSIONID') {
+                              getCookiesAndSaveInPref(cookies[i].value, url);
                             }
+                          }
 
-
-                            final prefs = await SharedPreferences.getInstance();
-                            var sessionID = prefs.getString('Cookie1');
-                            var header = {"Cookie": "JSESSIONID=$sessionID"};
-                            if (url.rawValue ==
-                                "http://54.163.228.123/app/schedule") {
-                              final response = await http.Client().get(
-                                  Uri.parse(url.rawValue),
-                                  headers: header);
-                              dom.Document document =
-                                  htmlparser.parse(response.body);
-                              var data =
-                                  document.getElementById('userIdForMobileApp');
-                              if (data?.attributes
-                                  .containsValue('userIdForMobileApp')??false) {
-                                userIdForMobileApp =
-                                    data!.attributes['data-value'];
-                                saveUserIDinPrefs(userIdForMobileApp);
-                              }
-                              _handleLocationPermission();
-                              bool serviceEnabled =
-                                  await Geolocator.isLocationServiceEnabled();
-                              print("Is location service enabled $serviceEnabled");
-
-                              if (serviceEnabled == true) {
-                                BackgroundService().initializeService();
-                              }
-                            } else {
-                              BackgroundService().stopService();
+                          final prefs = await SharedPreferences.getInstance();
+                          var sessionID = prefs.getString('Cookie1');
+                          var header = {"Cookie": "JSESSIONID=$sessionID"};
+                          if (url.rawValue == "${BASE_URL}app/schedule") {
+                            final response = await http.Client()
+                                .get(Uri.parse(url.rawValue), headers: header);
+                            dom.Document document =
+                                htmlparser.parse(response.body);
+                            var data =
+                                document.getElementById('userIdForMobileApp');
+                            if (data?.attributes
+                                    .containsValue('userIdForMobileApp') ??
+                                false) {
+                              userIdForMobileApp =
+                                  data!.attributes['data-value'];
+                              saveUserIDinPrefs(userIdForMobileApp);
                             }
-                          },
-                        ),
+                            await _handleLocationPermission();
+                            _handleCameraPermission();
+                            bool serviceEnabled =
+                                await Geolocator.isLocationServiceEnabled();
+                            print(
+                                "Is location service enabled $serviceEnabled");
+
+                            if (serviceEnabled == true) {
+                              BackgroundService().initializeService();
+                            }
+                          } else {
+                            BackgroundService().stopService();
+                          }
+                        },
+                      ),
                     )
-                    : const BeeperMDWidget(),
-              );
-            }),
-            Positioned(
-              child: Visibility(
-                visible: isVisible,
-                child: SafeArea(
-                  child: Container(
-                    height: size.height,
-                    width: size.width,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(
-                            "assets/images/splahs_background_01.jpg"),
-                        fit: BoxFit.cover,
-                      ),
+                  : const BeeperMDWidget(),
+            );
+          }),
+          Positioned(
+            child: Visibility(
+              visible: isVisible,
+              child: SafeArea(
+                child: Container(
+                  height: size.height,
+                  width: size.width,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image:
+                          AssetImage("assets/images/splahs_background_01.jpg"),
+                      fit: BoxFit.cover,
                     ),
-                    child: Center(
-                      child: Image.asset(
-                        "assets/images/beeper_logo.png",
-                        scale: 3,
-                      ),
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      "assets/images/beeper_logo.png",
+                      scale: 3,
                     ),
                   ),
                 ),
               ),
             ),
-            Positioned(
-              child: Visibility(
-                visible: isPageValid,
-                child: const SafeArea(
-                  child: BeeperMDWidget2(),
-                ),
+          ),
+          Positioned(
+            child: Visibility(
+              visible: isPageValid,
+              child: const SafeArea(
+                child: BeeperMDWidget2(),
               ),
             ),
-            Positioned(
-                child: Visibility(
-              visible: isLoading,
-              child: LinearProgressIndicator(
-                color: Colors.blueAccent,
-              ),
-            ))
-          ],
-        ),
-      );
-
+          ),
+          Positioned(
+              child: Visibility(
+            visible: isLoading,
+            child: LinearProgressIndicator(
+              color: Colors.blueAccent,
+            ),
+          ))
+        ],
+      ),
+    );
   }
 
   Future<bool> handleWillPop(BuildContext context) async {
@@ -240,6 +250,23 @@ class _WebViewContainerState extends State<WebViewContainer> {
       return false;
     }
     return true;
+  }
+
+  Future<bool> _handleCameraPermission() async {
+    // bool serviceEnabled;
+    PermissionStatus result;
+    if (Platform.isAndroid) {
+      result = (await Permission.camera.request());
+      if (result.isGranted) {
+        // Either the permission was already granted before or the user just granted it.
+        print("Location Permission is granted");
+        return true;
+      } else {
+        print("Location Permission is denied.");
+        return false;
+      }
+    }
+    return false;
   }
 
   Future<bool> _handleLocationPermission() async {
@@ -275,10 +302,10 @@ class _WebViewContainerState extends State<WebViewContainer> {
     try {
       result = await _connectivity.checkConnectivity();
       setState(() {
-        if(isApiLoaded){
-          if(result == ConnectivityResult.mobile ) {
+        if (isApiLoaded) {
+          if (result == ConnectivityResult.mobile) {
             isVisible = true;
-          } else if(result == ConnectivityResult.wifi) {
+          } else if (result == ConnectivityResult.wifi) {
             isVisible = true;
           } else {
             isVisible = false;
