@@ -12,7 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
 import 'package:http/http.dart' as http;
-import 'package:permission_handler/permission_handler.dart' ;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
@@ -32,8 +32,6 @@ class WebViewContainer extends StatefulWidget {
 class _WebViewContainerState extends State<WebViewContainer>
     with WidgetsBindingObserver {
   final GlobalKey webViewKey = GlobalKey();
-  static const channel = MethodChannel('beepermd.dev/location');
-  bool _isAndroidAppDestroyed = false;
 
   PullToRefreshController? pullToRefreshController;
   InAppWebViewController? _webViewController;
@@ -97,9 +95,10 @@ class _WebViewContainerState extends State<WebViewContainer>
                     URLRequest(url: await _webViewController?.getUrl()));
           }
         });
-    // LocationWidget();
-    checkPermissionStatus();
+    // WidgetsBinding.instance.addPersistentFrameCallback((timeStamp) async {
+    //   if (await Permission.location.status != PermissionStatus.granted) {
 
+    // });
   }
 
   Future<bool> isUrlValid(String url) async {
@@ -111,6 +110,7 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
   }
 
+  bool isFirst = true;
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -129,8 +129,8 @@ class _WebViewContainerState extends State<WebViewContainer>
                             useHybridComposition: true,
                             disableDefaultErrorPage: true),
                         pullToRefreshController: pullToRefreshController,
-                        initialUrlRequest: URLRequest(
-                            url: WebUri('${BASE_URL}patient')),
+                        initialUrlRequest:
+                            URLRequest(url: WebUri('${BASE_URL}patient')),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
@@ -156,31 +156,39 @@ class _WebViewContainerState extends State<WebViewContainer>
                           for (var i = 0; i < cookies.length; i++) {
                             if (cookies[i].name == 'JSESSIONID') {
                               getCookiesAndSaveInPref(cookies[i].value, url);
+                              var status =
+                              await Permission.locationWhenInUse.status;
+                              if (isFirst) {
+                                setState(() {
+                                  isFirst = false;
+                                });
+                                if (status != PermissionStatus.granted) {
+                                  await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                          const LocationWidget2()));
+                                } else {}
+                              }
                             }
                           }
 
                           final prefs = await SharedPreferences.getInstance();
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
-
                           if (url.rawValue == "${BASE_URL}app/schedule") {
-                            final response = await http.Client().get(Uri.parse(url.rawValue), headers: header);
-                            dom.Document document = htmlparser.parse(response.body);
-                            var data = document.getElementById('userIdForMobileApp');
-                            if (data?.attributes.containsValue('userIdForMobileApp') ?? false) {
+                            final response = await http.Client()
+                                .get(Uri.parse(url.rawValue), headers: header);
+                            dom.Document document =
+                                htmlparser.parse(response.body);
+                            var data =
+                                document.getElementById('userIdForMobileApp');
+                            if (data?.attributes
+                                    .containsValue('userIdForMobileApp') ??
+                                false) {
                               userIdForMobileApp =
                                   data!.attributes['data-value'];
                               saveUserIDinPrefs(userIdForMobileApp);
-                            }
-
-
-                             await _handleLocationPerm();
-                            await _handleCameraPermission();
-                            bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-                            print("Is location service enabled $serviceEnabled");
-
-                            if (serviceEnabled == true) {
-                              BackgroundService().initializeService();
                             }
                           } else {
                             BackgroundService().stopService();
@@ -235,46 +243,6 @@ class _WebViewContainerState extends State<WebViewContainer>
     );
   }
 
-  ///******************** Location permission ***********************///
-
-  Position? _currentPosition;
-  PermissionStatus _permissionStatus = PermissionStatus.denied;
-
-
-  void checkPermissionStatus() async {
-    PermissionStatus status = await Permission.locationWhenInUse.status;
-    setState(() {
-      _permissionStatus = status;
-    });
-
-  }
-
-   requestPermission() async {
-    PermissionStatus status = await Permission.locationWhenInUse.request();
-    setState(() {
-      _permissionStatus = status;
-    });
-    if(_permissionStatus == PermissionStatus.granted){
-      getCurrentLocation();
-    }
-
-    _handleCameraPermission();
-  }
-
-  void getCurrentLocation() async {
-    if (_permissionStatus == PermissionStatus.granted) {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      setState(() {
-        _currentPosition = position;
-      });
-    } else {
-      // Handle if permission is not granted
-    }
-  }
-
-  ///******************** Location permission ***********************///
-
   Future<bool> handleWillPop(BuildContext context) async {
     final now = DateTime.now();
     final backButtonHasNotBeenPressedOrSnackBarHasBeenClosed =
@@ -308,27 +276,14 @@ class _WebViewContainerState extends State<WebViewContainer>
     return false;
   }
 
-   _handleLocationPerm() async {
-    PermissionStatus status = await Permission.location.request();
-    if (status.isGranted) {
-      getCurrentLocation();
-      // Location permission granted, proceed with location-related tasks.
-    } else if (status.isDenied) {
-      // Location permission denied. Show a message to the user.
-    } else if (status.isPermanentlyDenied) {
-      // Location permission permanently denied. Ask the user to go to settings and manually enable it.
-    }
-  }
-
-
   Future<bool> _handleLocationPermission() async {
     // bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
     if (!serviceEnabled!) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please allow the location permission to use the app')));
+          content:
+              Text('Please allow the location permission to use the app')));
       return false;
     }
     permission = await Geolocator.checkPermission();
@@ -496,8 +451,6 @@ class BeeperMDWidget2 extends StatelessWidget {
   }
 }
 
-
-
 class LocationWidget2 extends StatefulWidget {
   const LocationWidget2({Key? key}) : super(key: key);
 
@@ -506,7 +459,6 @@ class LocationWidget2 extends StatefulWidget {
 }
 
 class _LocationWidget2State extends State<LocationWidget2> {
-
   bool? serviceEnabled;
 
   @override
@@ -523,26 +475,30 @@ class _LocationWidget2State extends State<LocationWidget2> {
               SizedBox(
                 height: size.height * 0.10,
               ),
-              Icon(Icons.location_on_outlined,color: Colors.blue,),
-              SizedBox(height: 10,),
+              Icon(
+                Icons.location_on_outlined,
+                color: Colors.blue,
+              ),
+              SizedBox(
+                height: 10,
+              ),
               Text(
-                "Location Access",
+                "Use your location",
                 style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w600,
-                    fontSize: 22
-                ),
+                    fontSize: 22),
               ),
-              SizedBox(height: 10,),
+              SizedBox(
+                height: 10,
+              ),
               Text(
-                "Allow to access this device location",
+                "BeeperMD App collects location data to share provider's real time location updates with patients",
                 textAlign: TextAlign.center,
-
                 style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w500,
                     fontSize: 20),
-
               ),
               SizedBox(
                 height: size.height * 0.15,
@@ -561,50 +517,47 @@ class _LocationWidget2State extends State<LocationWidget2> {
                     height: 45,
                     width: 150,
                     child: ElevatedButton(
-
-                        child: Text(
-                            "No Thanks".toUpperCase(),
-                            style: TextStyle(fontSize: 14)
-                        ),
+                        child: Text("No Thanks".toUpperCase(),
+                            style: TextStyle(fontSize: 14)),
                         style: ButtonStyle(
-
-
-                            foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
-                            backgroundColor: MaterialStateProperty.all<Color>(Colors.grey),
-                            shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                            foregroundColor:
+                                MaterialStateProperty.all<Color>(Colors.white),
+                            backgroundColor:
+                                MaterialStateProperty.all<Color>(Colors.grey),
+                            shape: MaterialStateProperty.all<
+                                    RoundedRectangleBorder>(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Colors.grey)
-                                )
-                            )
-                        ),
+                                    side: BorderSide(color: Colors.grey)))),
                         onPressed: () {
                           Navigator.pop(context);
-                        }
-                    ),
+                          _handleCameraPermission();
+
+                        }),
                   ),
                   SizedBox(
                     height: 45,
                     width: 150,
                     child: ElevatedButton(
-                      child: Text(
-                          "Trun On".toUpperCase(),
-                          style: TextStyle(fontSize: 14)
-                      ),
-                      style: ButtonStyle(
-                          foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
-                          backgroundColor: MaterialStateProperty.all<Color>(Color(0xff73BF2C)),
-                          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                              RoundedRectangleBorder(
-                                  borderRadius:  BorderRadius.circular(10),
-                                  side: BorderSide(color: Color(0xff73BF2C))
-                              )
-                          )
-                      ),
-                      onPressed: _permissionStatus == PermissionStatus.granted
-                          ? getCurrentLocation
-                          : requestPermission,
-                    ),
+                        child: Text("Trun On".toUpperCase(),
+                            style: TextStyle(fontSize: 14)),
+                        style: ButtonStyle(
+                            foregroundColor:
+                                MaterialStateProperty.all<Color>(Colors.white),
+                            backgroundColor: MaterialStateProperty.all<Color>(
+                                Color(0xff73BF2C)),
+                            shape: MaterialStateProperty.all<
+                                    RoundedRectangleBorder>(
+                                RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side:
+                                        BorderSide(color: Color(0xff73BF2C))))),
+                        onPressed: () {
+                          // _permissionStatus == PermissionStatus.granted
+                          //     ? getCurrentLocation
+                          // :
+                          requestPermission(context);
+                        }),
                   ),
                 ],
               )
@@ -612,7 +565,6 @@ class _LocationWidget2State extends State<LocationWidget2> {
           ),
         ),
       ),
-
     );
   }
 
@@ -622,7 +574,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
   @override
   void initState() {
     super.initState();
-    checkPermissionStatus();
+    // checkPermissionStatus();
   }
 
   void checkPermissionStatus() async {
@@ -632,15 +584,40 @@ class _LocationWidget2State extends State<LocationWidget2> {
     });
   }
 
-  void requestPermission() async {
+  void requestPermission(context) async {
     PermissionStatus status = await Permission.locationWhenInUse.request();
     setState(() {
       _permissionStatus = status;
     });
-    if(_permissionStatus == PermissionStatus.granted){
+    if (_permissionStatus == PermissionStatus.granted) {
       getCurrentLocation();
-    }
 
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      print("Is location service enabled $serviceEnabled");
+
+      if (serviceEnabled == true) {
+        BackgroundService().initializeService();
+        _handleCameraPermission();
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<bool> _handleCameraPermission() async {
+    // bool serviceEnabled;
+    PermissionStatus result;
+    if (Platform.isAndroid) {
+      result = (await Permission.camera.request());
+      if (result.isGranted) {
+        // Either the permission was already granted before or the user just granted it.
+        print("Location Permission is granted");
+        return true;
+      } else {
+        print("Location Permission is denied.");
+        return false;
+      }
+    }
+    return false;
   }
 
   void getCurrentLocation() async {
@@ -655,7 +632,6 @@ class _LocationWidget2State extends State<LocationWidget2> {
     }
   }
 
-
   Future<bool> _handleLocationPermission(BuildContext context) async {
     // bool serviceEnabled;
     LocationPermission permission;
@@ -663,7 +639,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
     if (!serviceEnabled!) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-          Text('Please allow the location permission to use the app')));
+              Text('Please allow the location permission to use the app')));
       return false;
     }
     permission = await Geolocator.checkPermission();
@@ -684,152 +660,3 @@ class _LocationWidget2State extends State<LocationWidget2> {
     return true;
   }
 }
-
-
-
-
-/*
-class LocationWidget extends StatelessWidget {
-   LocationWidget({Key? key}) : super(key: key);
-
-  bool? serviceEnabled;
-
-  @override
-  Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    return SafeArea(
-      child: SizedBox(
-          height: size.height,
-          width: size.width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: size.height * 0.10,
-              ),
-              Icon(Icons.location_on_outlined,color: Colors.blue,),
-              SizedBox(height: 10,),
-              Text(
-                "Location Access",
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 22
-                ),
-              ),
-              SizedBox(height: 10,),
-              Text(
-                "Allow to access this device location",
-                textAlign: TextAlign.center,
-
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w500,
-                    fontSize: 20),
-
-              ),
-              SizedBox(
-                height: size.height * 0.15,
-              ),
-              Image.asset(
-                "assets/images/location_access.jpg",
-                scale: 3.3,
-              ),
-              SizedBox(
-                height: size.height * 0.15,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  SizedBox(
-                    height: 45,
-                    width: 150,
-                    child: ElevatedButton(
-
-                        child: Text(
-                            "No Thanks".toUpperCase(),
-                            style: TextStyle(fontSize: 14)
-                        ),
-                        style: ButtonStyle(
-
-
-                            foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
-                            backgroundColor: MaterialStateProperty.all<Color>(Colors.grey),
-                            shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                                RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Colors.grey)
-                                )
-                            )
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        }
-                    ),
-                  ),
-                  SizedBox(
-                    height: 45,
-                    width: 150,
-                    child: ElevatedButton(
-                        child: Text(
-                            "Trun On".toUpperCase(),
-                            style: TextStyle(fontSize: 14)
-                        ),
-                        style: ButtonStyle(
-                            foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
-                            backgroundColor: MaterialStateProperty.all<Color>(Color(0xff73BF2C)),
-                            shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                                RoundedRectangleBorder(
-                                    borderRadius:  BorderRadius.circular(10),
-                                    side: BorderSide(color: Color(0xff73BF2C))
-                                )
-                            )
-                        ),
-                        onPressed: () {
-                          _handleLocationPermission(context);
-                        }
-                    ),
-                  ),
-                ],
-              )
-            ],
-          ),
-        ),
-
-    );
-  }
-
-  Future<bool> _handleLocationPermission(BuildContext context) async {
-    // bool serviceEnabled;
-    LocationPermission permission;
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled!) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-          Text('Please allow the location permission to use the app')));
-      return false;
-    }
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied')));
-        return false;
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Location permissions are permanently denied, we cannot request permissions.')));
-      return false;
-    }
-    return true;
-  }
-
-
-}
-
-*/
-
-
