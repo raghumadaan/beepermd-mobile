@@ -156,20 +156,6 @@ class _WebViewContainerState extends State<WebViewContainer>
                           for (var i = 0; i < cookies.length; i++) {
                             if (cookies[i].name == 'JSESSIONID') {
                               getCookiesAndSaveInPref(cookies[i].value, url);
-                              var status =
-                              await Permission.locationWhenInUse.status;
-                              if (isFirst) {
-                                setState(() {
-                                  isFirst = false;
-                                });
-                                if (status != PermissionStatus.granted) {
-                                  await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                          const LocationWidget2()));
-                                } else {}
-                              }
                             }
                           }
 
@@ -177,6 +163,20 @@ class _WebViewContainerState extends State<WebViewContainer>
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
                           if (url.rawValue == "${BASE_URL}app/schedule") {
+                            var status =
+                            await Permission.locationWhenInUse.status;
+                            if (isFirst) {
+                              setState(() {
+                                isFirst = false;
+                              });
+                              if (status != PermissionStatus.granted) {
+                                await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                        const LocationWidget2()));
+                              } else {}
+                            }
                             final response = await http.Client()
                                 .get(Uri.parse(url.rawValue), headers: header);
                             dom.Document document =
