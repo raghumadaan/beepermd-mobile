@@ -17,8 +17,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BackgroundService {
-  ConnectivityResult _connectionStatus = ConnectivityResult.none;
-
   Future<void> initializeService() async {
     final service = FlutterBackgroundService();
     await service.configure(
@@ -52,8 +50,6 @@ class BackgroundService {
     DartPluginRegistrant.ensureInitialized();
 
     /// OPTIONAL when use custom notification
-    // final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    // FlutterLocalNotificationsPlugin();
     if (service is AndroidServiceInstance) {
       service.on('setAsForeground').listen((event) {
         service.setAsForegroundService();
@@ -168,13 +164,9 @@ Future<void> getCurrentLocation() async {
       }
     });
   }).onError((e) {
-    FlutterBackgroundService().invoke('stopService');
+    if (Platform.isAndroid) {
+      FlutterBackgroundService().invoke('stopService');
+    }
     debugPrint("THE ERROR IN THE SERVICE $e");
   });
-}
-
-Future<dynamic> getLocation() async {
-  var data = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high);
-  return data;
 }
