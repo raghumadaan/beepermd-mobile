@@ -148,6 +148,7 @@ Future<void> getCurrentLocation() async {
       .listen((Position? position) {
     print("THE CURRENT POSITION IS $position");
     Timer.periodic(const Duration(seconds: 30), (timer) async {
+      print("THE CURRENT POSITION IS $position");
       if (result.name != 'none') {
         RestClient().post('user/saveLatLong', session, position?.latitude,
             position?.longitude, userId);
@@ -169,4 +170,16 @@ Future<void> getCurrentLocation() async {
     }
     debugPrint("THE ERROR IN THE SERVICE $e");
   });
+}
+
+void showToast(String message){
+  Fluttertoast.showToast(
+      msg: message,
+      webPosition: "right",
+      webShowClose: true,
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.TOP,
+      backgroundColor: Colors.green,
+      textColor: Colors.white,
+      fontSize: 16.0);
 }

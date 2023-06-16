@@ -174,6 +174,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                                 BackgroundService().initializeService();
                               }
                             } else if (Platform.isIOS) {
+
                               getCurrentLocation();
                             }
                           } else {
@@ -237,10 +238,12 @@ class _WebViewContainerState extends State<WebViewContainer>
   PermissionStatus _permissionStatus = PermissionStatus.denied;
 
   void checkPermissionStatus() async {
+    print("See status ${_permissionStatus}");
     PermissionStatus status = await Permission.locationWhenInUse.status;
     setState(() {
       _permissionStatus = status;
     });
+    print("See status ${_permissionStatus}");
   }
 
   ///******************** Location permission ***********************///
@@ -282,11 +285,13 @@ class _WebViewContainerState extends State<WebViewContainer>
     PermissionStatus status = await Permission.location.request();
     print("Permission status $status");
     if (status.isGranted) {
-      getCurrentLocation();
+      showToast("Location permission granted");
       // Location permission granted, proceed with location-related tasks.
     } else if (status.isDenied) {
+      showToast("Location permission denied");
       // Location permission denied. Show a message to the user.
     } else if (status.isPermanentlyDenied) {
+      showToast("Location permission permanently denied");
       // Location permission permanently denied. Ask the user to go to settings and manually enable it.
     }
   }
