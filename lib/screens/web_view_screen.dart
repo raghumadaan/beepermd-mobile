@@ -20,7 +20,7 @@ const BASE_URL = 'http://54.163.228.123/'; //STAG
 // const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-FlutterLocalNotificationsPlugin();
+    FlutterLocalNotificationsPlugin();
 
 class WebViewContainer extends StatefulWidget {
   const WebViewContainer({super.key});
@@ -92,7 +92,7 @@ class _WebViewContainerState extends State<WebViewContainer>
           } else if (Platform.isIOS) {
             _webViewController?.loadUrl(
                 urlRequest:
-                URLRequest(url: await _webViewController?.getUrl()));
+                    URLRequest(url: await _webViewController?.getUrl()));
           }
         });
   }
@@ -107,6 +107,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   }
 
   bool isFirst = true;
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -118,74 +119,81 @@ class _WebViewContainerState extends State<WebViewContainer>
               onWillPop: () => handleWillPop(context),
               child: _connectionStatus.name != "none"
                   ? SafeArea(
-                child: InAppWebView(
-                  key: webViewKey,
-                  initialSettings: InAppWebViewSettings(
-                      supportZoom: false,
-                      useHybridComposition: true,
-                      disableDefaultErrorPage: true),
-                  pullToRefreshController: pullToRefreshController,
-                  initialUrlRequest:
-                  URLRequest(url: WebUri('${BASE_URL}patient')),
-                  onWebViewCreated: (InAppWebViewController controller) {
-                    _webViewController = controller;
-                  },
-                  onLoadStop: (controller, url) async {
-                    setState(() {
-                      isApiLoaded = false;
-                      isVisible = false;
-                      print("Load stop status $isVisible");
-                    });
-                    pullToRefreshController?.endRefreshing();
-                    initConnectivity();
-                    _connectivitySubscription = _connectivity
-                        .onConnectivityChanged
-                        .listen(_updateConnectionStatus);
-                    List<Cookie> cookies =
-                    await _cookieManager.getCookies(url: url!);
-                    for (var i = 0; i < cookies.length; i++) {
-                      if (cookies[i].name == 'JSESSIONID') {
-                        getCookiesAndSaveInPref(cookies[i].value, url);
-                      }
-                    }
+                      child: InAppWebView(
+                        key: webViewKey,
+                        initialSettings: InAppWebViewSettings(
+                            supportZoom: false,
+                            useHybridComposition: true,
+                            disableDefaultErrorPage: true),
+                        pullToRefreshController: pullToRefreshController,
+                        initialUrlRequest:
+                            URLRequest(url: WebUri('${BASE_URL}patient')),
+                        onWebViewCreated: (InAppWebViewController controller) {
+                          _webViewController = controller;
+                        },
+                        onLoadStop: (controller, url) async {
+                          setState(() {
+                            isApiLoaded = false;
+                            isVisible = false;
+                            print("Load stop status $isVisible");
+                          });
+                          pullToRefreshController?.endRefreshing();
+                          initConnectivity();
+                          _connectivitySubscription = _connectivity
+                              .onConnectivityChanged
+                              .listen(_updateConnectionStatus);
+                          List<Cookie> cookies =
+                              await _cookieManager.getCookies(url: url!);
+                          for (var i = 0; i < cookies.length; i++) {
+                            if (cookies[i].name == 'JSESSIONID') {
+                              getCookiesAndSaveInPref(cookies[i].value, url);
+                            }
+                          }
 
-                    final prefs = await SharedPreferences.getInstance();
-                    var sessionID = prefs.getString('Cookie1');
-                    var header = {"Cookie": "JSESSIONID=$sessionID"};
-                    if (url.rawValue == "${BASE_URL}app/schedule") {
-                      var status =
-                      await Permission.locationWhenInUse.status;
-                      if (isFirst) {
-                        setState(() {
-                          isFirst = false;
-                        });
-                        if (status != PermissionStatus.granted) {
-                          await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                  const LocationWidget2()));
-                        } else {}
-                      }
-                      final response = await http.Client()
-                          .get(Uri.parse(url.rawValue), headers: header);
-                      dom.Document document =
-                      htmlparser.parse(response.body);
-                      var data =
-                      document.getElementById('userIdForMobileApp');
-                      if (data?.attributes
-                          .containsValue('userIdForMobileApp') ??
-                          false) {
-                        userIdForMobileApp =
-                        data!.attributes['data-value'];
-                        saveUserIDinPrefs(userIdForMobileApp);
-                      }
-                    } else {
-                      BackgroundService().stopService();
-                    }
-                  },
-                ),
-              )
+                          final prefs = await SharedPreferences.getInstance();
+                          var sessionID = prefs.getString('Cookie1');
+                          var header = {"Cookie": "JSESSIONID=$sessionID"};
+                          if (url.rawValue == "${BASE_URL}app/schedule") {
+                            var status =
+                                await Permission.locationWhenInUse.status;
+                            if (isFirst) {
+                              setState(() {
+                                isFirst = false;
+                              });
+                              if (status != PermissionStatus.granted) {
+                                await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const LocationWidget2()));
+                              } else {}
+                            }
+                            final response = await http.Client()
+                                .get(Uri.parse(url.rawValue), headers: header);
+                            dom.Document document =
+                                htmlparser.parse(response.body);
+                            var data =
+                                document.getElementById('userIdForMobileApp');
+                            if (data?.attributes
+                                    .containsValue('userIdForMobileApp') ??
+                                false) {
+                              userIdForMobileApp =
+                                  data!.attributes['data-value'];
+                              saveUserIDinPrefs(userIdForMobileApp);
+                            }
+                            bool serviceEnabled =
+                                await Geolocator.isLocationServiceEnabled();
+                            print(
+                                "Is location service enabled $serviceEnabled");
+                            if (serviceEnabled == true) {
+                              BackgroundService().initializeService();
+                            }
+                          } else {
+                            BackgroundService().stopService();
+                          }
+                        },
+                      ),
+                    )
                   : const BeeperMDWidget(),
             );
           }),
@@ -199,7 +207,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                   decoration: const BoxDecoration(
                     image: DecorationImage(
                       image:
-                      AssetImage("assets/images/splahs_background_01.jpg"),
+                          AssetImage("assets/images/splahs_background_01.jpg"),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -223,11 +231,11 @@ class _WebViewContainerState extends State<WebViewContainer>
           ),
           Positioned(
               child: Visibility(
-                visible: isLoading,
-                child: LinearProgressIndicator(
-                  color: Colors.blueAccent,
-                ),
-              ))
+            visible: isLoading,
+            child: LinearProgressIndicator(
+              color: Colors.blueAccent,
+            ),
+          ))
         ],
       ),
     );
@@ -464,18 +472,17 @@ class _LocationWidget2State extends State<LocationWidget2> {
                             style: TextStyle(fontSize: 14)),
                         style: ButtonStyle(
                             foregroundColor:
-                            MaterialStateProperty.all<Color>(Colors.white),
+                                MaterialStateProperty.all<Color>(Colors.white),
                             backgroundColor:
-                            MaterialStateProperty.all<Color>(Colors.grey),
+                                MaterialStateProperty.all<Color>(Colors.grey),
                             shape: MaterialStateProperty.all<
-                                RoundedRectangleBorder>(
+                                    RoundedRectangleBorder>(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     side: BorderSide(color: Colors.grey)))),
                         onPressed: () {
                           Navigator.pop(context);
                           _handleCameraPermission();
-
                         }),
                   ),
                   SizedBox(
@@ -486,15 +493,15 @@ class _LocationWidget2State extends State<LocationWidget2> {
                             style: TextStyle(fontSize: 14)),
                         style: ButtonStyle(
                             foregroundColor:
-                            MaterialStateProperty.all<Color>(Colors.white),
+                                MaterialStateProperty.all<Color>(Colors.white),
                             backgroundColor: MaterialStateProperty.all<Color>(
                                 Color(0xff73BF2C)),
                             shape: MaterialStateProperty.all<
-                                RoundedRectangleBorder>(
+                                    RoundedRectangleBorder>(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     side:
-                                    BorderSide(color: Color(0xff73BF2C))))),
+                                        BorderSide(color: Color(0xff73BF2C))))),
                         onPressed: () {
                           // _permissionStatus == PermissionStatus.granted
                           //     ? getCurrentLocation
@@ -582,7 +589,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
     if (!serviceEnabled!) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-          Text('Please allow the location permission to use the app')));
+              Text('Please allow the location permission to use the app')));
       return false;
     }
     permission = await Geolocator.checkPermission();
