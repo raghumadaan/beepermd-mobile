@@ -20,7 +20,7 @@ const BASE_URL = 'http://54.163.228.123/'; //STAG
 // const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 class WebViewContainer extends StatefulWidget {
   const WebViewContainer({super.key});
@@ -32,8 +32,10 @@ class WebViewContainer extends StatefulWidget {
 class _WebViewContainerState extends State<WebViewContainer>
     with WidgetsBindingObserver {
   final GlobalKey webViewKey = GlobalKey();
+
   PullToRefreshController? pullToRefreshController;
   InAppWebViewController? _webViewController;
+
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
   final Connectivity _connectivity = Connectivity();
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
@@ -41,11 +43,14 @@ class _WebViewContainerState extends State<WebViewContainer>
   bool isVisible = false;
   bool isLoading = false;
   bool isPageValid = false;
+
   bool? serviceEnabled;
+
   bool isApiLoaded = true;
   var userIdForMobileApp;
   DateTime? backButtonPressTime;
   final CookieManager _cookieManager = CookieManager.instance();
+
   static const snackBarDuration = Duration(seconds: 3);
 
   final snackBar = const SnackBar(
@@ -87,10 +92,9 @@ class _WebViewContainerState extends State<WebViewContainer>
           } else if (Platform.isIOS) {
             _webViewController?.loadUrl(
                 urlRequest:
-                    URLRequest(url: await _webViewController?.getUrl()));
+                URLRequest(url: await _webViewController?.getUrl()));
           }
         });
-    checkPermissionStatus();
   }
 
   Future<bool> isUrlValid(String url) async {
@@ -102,6 +106,7 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
   }
 
+  bool isFirst = true;
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -113,78 +118,74 @@ class _WebViewContainerState extends State<WebViewContainer>
               onWillPop: () => handleWillPop(context),
               child: _connectionStatus.name != "none"
                   ? SafeArea(
-                      child: InAppWebView(
-                        key: webViewKey,
-                        initialSettings: InAppWebViewSettings(
-                            supportZoom: false,
-                            useHybridComposition: true,
-                            disableDefaultErrorPage: true),
-                        pullToRefreshController: pullToRefreshController,
-                        initialUrlRequest:
-                            URLRequest(url: WebUri('${BASE_URL}patient')),
-                        onWebViewCreated: (InAppWebViewController controller) {
-                          _webViewController = controller;
-                        },
-                        onLoadStop: (controller, url) async {
-                          setState(() {
-                            isApiLoaded = false;
-                            isVisible = false;
-                            print("Load stop status $isVisible");
-                          });
-                          pullToRefreshController?.endRefreshing();
-                          initConnectivity();
-                          _connectivitySubscription = _connectivity
-                              .onConnectivityChanged
-                              .listen(_updateConnectionStatus);
-                          List<Cookie> cookies =
-                              await _cookieManager.getCookies(url: url!);
-                          for (var i = 0; i < cookies.length; i++) {
-                            if (cookies[i].name == 'JSESSIONID') {
-                              getCookiesAndSaveInPref(cookies[i].value, url);
-                            }
-                          }
+                child: InAppWebView(
+                  key: webViewKey,
+                  initialSettings: InAppWebViewSettings(
+                      supportZoom: false,
+                      useHybridComposition: true,
+                      disableDefaultErrorPage: true),
+                  pullToRefreshController: pullToRefreshController,
+                  initialUrlRequest:
+                  URLRequest(url: WebUri('${BASE_URL}patient')),
+                  onWebViewCreated: (InAppWebViewController controller) {
+                    _webViewController = controller;
+                  },
+                  onLoadStop: (controller, url) async {
+                    setState(() {
+                      isApiLoaded = false;
+                      isVisible = false;
+                      print("Load stop status $isVisible");
+                    });
+                    pullToRefreshController?.endRefreshing();
+                    initConnectivity();
+                    _connectivitySubscription = _connectivity
+                        .onConnectivityChanged
+                        .listen(_updateConnectionStatus);
+                    List<Cookie> cookies =
+                    await _cookieManager.getCookies(url: url!);
+                    for (var i = 0; i < cookies.length; i++) {
+                      if (cookies[i].name == 'JSESSIONID') {
+                        getCookiesAndSaveInPref(cookies[i].value, url);
+                      }
+                    }
 
-                          final prefs = await SharedPreferences.getInstance();
-                          var sessionID = prefs.getString('Cookie1');
-                          var header = {"Cookie": "JSESSIONID=$sessionID"};
-
-                          if (url.rawValue == "${BASE_URL}app/schedule") {
-                            final response = await http.Client()
-                                .get(Uri.parse(url.rawValue), headers: header);
-                            dom.Document document =
-                                htmlparser.parse(response.body);
-                            var data =
-                                document.getElementById('userIdForMobileApp');
-                            if (data?.attributes
-                                    .containsValue('userIdForMobileApp') ??
-                                false) {
-                              userIdForMobileApp =
-                                  data!.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
-                            }
-                            await _handleLocationPerm();
-                            await _handleCameraPermission();
-                            if (Platform.isAndroid) {
-                              bool serviceEnabled =
-                                  await Geolocator.isLocationServiceEnabled();
-                              print(
-                                  "Is location service enabled $serviceEnabled");
-
-                              if (serviceEnabled == true) {
-                                BackgroundService().initializeService();
-                              }
-                            } else if (Platform.isIOS) {
-
-                              getCurrentLocation();
-                            }
-                          } else {
-                            if (Platform.isAndroid) {
-                              BackgroundService().stopService();
-                            }
-                          }
-                        },
-                      ),
-                    )
+                    final prefs = await SharedPreferences.getInstance();
+                    var sessionID = prefs.getString('Cookie1');
+                    var header = {"Cookie": "JSESSIONID=$sessionID"};
+                    if (url.rawValue == "${BASE_URL}app/schedule") {
+                      var status =
+                      await Permission.locationWhenInUse.status;
+                      if (isFirst) {
+                        setState(() {
+                          isFirst = false;
+                        });
+                        if (status != PermissionStatus.granted) {
+                          await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                  const LocationWidget2()));
+                        } else {}
+                      }
+                      final response = await http.Client()
+                          .get(Uri.parse(url.rawValue), headers: header);
+                      dom.Document document =
+                      htmlparser.parse(response.body);
+                      var data =
+                      document.getElementById('userIdForMobileApp');
+                      if (data?.attributes
+                          .containsValue('userIdForMobileApp') ??
+                          false) {
+                        userIdForMobileApp =
+                        data!.attributes['data-value'];
+                        saveUserIDinPrefs(userIdForMobileApp);
+                      }
+                    } else {
+                      BackgroundService().stopService();
+                    }
+                  },
+                ),
+              )
                   : const BeeperMDWidget(),
             );
           }),
@@ -198,7 +199,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                   decoration: const BoxDecoration(
                     image: DecorationImage(
                       image:
-                          AssetImage("assets/images/splahs_background_01.jpg"),
+                      AssetImage("assets/images/splahs_background_01.jpg"),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -222,31 +223,15 @@ class _WebViewContainerState extends State<WebViewContainer>
           ),
           Positioned(
               child: Visibility(
-            visible: isLoading,
-            child: LinearProgressIndicator(
-              color: Colors.blueAccent,
-            ),
-          ))
+                visible: isLoading,
+                child: LinearProgressIndicator(
+                  color: Colors.blueAccent,
+                ),
+              ))
         ],
       ),
     );
   }
-
-  ///******************** Location permission ***********************///
-
-  Position? _currentPosition;
-  PermissionStatus _permissionStatus = PermissionStatus.denied;
-
-  void checkPermissionStatus() async {
-    print("See status ${_permissionStatus}");
-    PermissionStatus status = await Permission.locationWhenInUse.status;
-    setState(() {
-      _permissionStatus = status;
-    });
-    print("See status ${_permissionStatus}");
-  }
-
-  ///******************** Location permission ***********************///
 
   Future<bool> handleWillPop(BuildContext context) async {
     final now = DateTime.now();
@@ -262,38 +247,6 @@ class _WebViewContainerState extends State<WebViewContainer>
       return false;
     }
     return true;
-  }
-
-  Future<bool> _handleCameraPermission() async {
-    // bool serviceEnabled;
-    PermissionStatus result;
-    if (Platform.isAndroid) {
-      result = (await Permission.camera.request());
-      if (result.isGranted) {
-        // Either the permission was already granted before or the user just granted it.
-        print("Camera Permission is granted");
-        return true;
-      } else {
-        print("Camera Permission is denied");
-        return false;
-      }
-    }
-    return false;
-  }
-
-  _handleLocationPerm() async {
-    PermissionStatus status = await Permission.location.request();
-    print("Permission status $status");
-    if (status.isGranted) {
-      showToast("Location permission granted");
-      // Location permission granted, proceed with location-related tasks.
-    } else if (status.isDenied) {
-      showToast("Location permission denied");
-      // Location permission denied. Show a message to the user.
-    } else if (status.isPermanentlyDenied) {
-      showToast("Location permission permanently denied");
-      // Location permission permanently denied. Ask the user to go to settings and manually enable it.
-    }
   }
 
   Future<void> initConnectivity() async {
@@ -316,11 +269,9 @@ class _WebViewContainerState extends State<WebViewContainer>
       developer.log('Couldn\'t check connectivity status', error: e);
       return;
     }
-
     if (!mounted) {
       return Future.value(null);
     }
-
     return _updateConnectionStatus(result);
   }
 
@@ -475,7 +426,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
                 height: 10,
               ),
               Text(
-                "Location Access",
+                "Use your location",
                 style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w600,
@@ -485,7 +436,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
                 height: 10,
               ),
               Text(
-                "Allow to access this device location",
+                "BeeperMD App collects location data to share provider's real time location updates with patients",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontFamily: 'Montserrat',
@@ -513,38 +464,43 @@ class _LocationWidget2State extends State<LocationWidget2> {
                             style: TextStyle(fontSize: 14)),
                         style: ButtonStyle(
                             foregroundColor:
-                                MaterialStateProperty.all<Color>(Colors.white),
+                            MaterialStateProperty.all<Color>(Colors.white),
                             backgroundColor:
-                                MaterialStateProperty.all<Color>(Colors.grey),
+                            MaterialStateProperty.all<Color>(Colors.grey),
                             shape: MaterialStateProperty.all<
-                                    RoundedRectangleBorder>(
+                                RoundedRectangleBorder>(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     side: BorderSide(color: Colors.grey)))),
                         onPressed: () {
                           Navigator.pop(context);
+                          _handleCameraPermission();
+
                         }),
                   ),
                   SizedBox(
                     height: 45,
                     width: 150,
                     child: ElevatedButton(
-                      child: Text("Trun On".toUpperCase(),
-                          style: TextStyle(fontSize: 14)),
-                      style: ButtonStyle(
-                          foregroundColor:
-                              MaterialStateProperty.all<Color>(Colors.white),
-                          backgroundColor: MaterialStateProperty.all<Color>(
-                              Color(0xff73BF2C)),
-                          shape: MaterialStateProperty.all<
-                                  RoundedRectangleBorder>(
-                              RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: Color(0xff73BF2C))))),
-                      onPressed: _permissionStatus == PermissionStatus.granted
-                          ? getCurrentLocation
-                          : requestPermission,
-                    ),
+                        child: Text("Trun On".toUpperCase(),
+                            style: TextStyle(fontSize: 14)),
+                        style: ButtonStyle(
+                            foregroundColor:
+                            MaterialStateProperty.all<Color>(Colors.white),
+                            backgroundColor: MaterialStateProperty.all<Color>(
+                                Color(0xff73BF2C)),
+                            shape: MaterialStateProperty.all<
+                                RoundedRectangleBorder>(
+                                RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side:
+                                    BorderSide(color: Color(0xff73BF2C))))),
+                        onPressed: () {
+                          // _permissionStatus == PermissionStatus.granted
+                          //     ? getCurrentLocation
+                          // :
+                          requestPermission(context);
+                        }),
                   ),
                 ],
               )
@@ -561,7 +517,7 @@ class _LocationWidget2State extends State<LocationWidget2> {
   @override
   void initState() {
     super.initState();
-    checkPermissionStatus();
+    // checkPermissionStatus();
   }
 
   void checkPermissionStatus() async {
@@ -571,14 +527,40 @@ class _LocationWidget2State extends State<LocationWidget2> {
     });
   }
 
-  void requestPermission() async {
+  void requestPermission(context) async {
     PermissionStatus status = await Permission.locationWhenInUse.request();
     setState(() {
       _permissionStatus = status;
     });
     if (_permissionStatus == PermissionStatus.granted) {
       getCurrentLocation();
+
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      print("Is location service enabled $serviceEnabled");
+
+      if (serviceEnabled == true) {
+        BackgroundService().initializeService();
+        _handleCameraPermission();
+        Navigator.pop(context);
+      }
     }
+  }
+
+  Future<bool> _handleCameraPermission() async {
+    // bool serviceEnabled;
+    PermissionStatus result;
+    if (Platform.isAndroid) {
+      result = (await Permission.camera.request());
+      if (result.isGranted) {
+        // Either the permission was already granted before or the user just granted it.
+        print("Location Permission is granted");
+        return true;
+      } else {
+        print("Location Permission is denied.");
+        return false;
+      }
+    }
+    return false;
   }
 
   void getCurrentLocation() async {
@@ -591,5 +573,33 @@ class _LocationWidget2State extends State<LocationWidget2> {
     } else {
       // Handle if permission is not granted
     }
+  }
+
+  Future<bool> _handleLocationPermission(BuildContext context) async {
+    // bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled!) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+          Text('Please allow the location permission to use the app')));
+      return false;
+    }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied')));
+        return false;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Location permissions are permanently denied, we cannot request permissions.')));
+      return false;
+    }
+    return true;
   }
 }
