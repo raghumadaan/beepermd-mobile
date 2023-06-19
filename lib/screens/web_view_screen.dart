@@ -16,8 +16,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
-const BASE_URL = 'http://54.163.228.123/'; //STAG
-// const BASE_URL = 'https://beepermd.com/'; //PROD
+// const BASE_URL = 'http://54.163.228.123/'; //STAG
+const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -143,11 +143,9 @@ class _WebViewContainerState extends State<WebViewContainer>
                               getCookiesAndSaveInPref(cookies[i].value, url);
                             }
                           }
-
                           final prefs = await SharedPreferences.getInstance();
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
-
                           if (url.rawValue == "${BASE_URL}app/schedule") {
                             final response = await http.Client()
                                 .get(Uri.parse(url.rawValue), headers: header);
@@ -222,12 +220,10 @@ class _WebViewContainerState extends State<WebViewContainer>
   PermissionStatus _permissionStatus = PermissionStatus.denied;
 
   void checkPermissionStatus() async {
-    print("See status ${_permissionStatus}");
     PermissionStatus status = await Permission.locationWhenInUse.status;
     setState(() {
       _permissionStatus = status;
     });
-    print("See status ${_permissionStatus}");
   }
 
   ///******************** Location permission ***********************///
@@ -267,7 +263,6 @@ class _WebViewContainerState extends State<WebViewContainer>
 
   _handleLocationPerm() async {
     PermissionStatus status = await Permission.location.request();
-    print("Permission status $status");
     if (status.isGranted) {
       showToast("Location permission granted");
       // Location permission granted, proceed with location-related tasks.
@@ -295,7 +290,6 @@ class _WebViewContainerState extends State<WebViewContainer>
           }
         }
       });
-      print("Connection status $isVisible");
     } on PlatformException catch (e) {
       developer.log('Couldn\'t check connectivity status', error: e);
       return;

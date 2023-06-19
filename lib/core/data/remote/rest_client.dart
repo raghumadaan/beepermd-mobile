@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 
 class RestClient{
-  var BaseURl = "http://54.163.228.123/app/";
+  // var BaseURl = "http://54.163.228.123/app/"; //STAG
+  var BaseURl = 'https://beepermd.com/'; //PROD
   Future<http.Response> post(apiName,sessionID,lat,long,docId)async{
     var headers = {
     "Cookie":"JSESSIONID=$sessionID",
@@ -15,10 +14,8 @@ class RestClient{
       "latitude": lat,
       "longitude": long
     });
-    print("save lat/long data ${body}");
     var url = Uri.parse(BaseURl+apiName);
     final response = await http.Client().post(url,headers: headers,body: body);
-    print("THE RESPONSE OF POST ${response.statusCode} and TIME ${DateTime.now()} " );
     return response;
   }
 }
