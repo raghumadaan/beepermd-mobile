@@ -159,8 +159,8 @@ class _WebViewContainerState extends State<WebViewContainer>
                                     .containsValue('userIdForMobileApp') ??
                                 false) {
                               userIdForMobileApp =
-                                  data!.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
+                                  data!.nodes[0];
+                              saveUserIDinPrefs(userIdForMobileApp.data);
                             }
                             await _handleLocationPerm();
                             await _handleCameraPermission();
