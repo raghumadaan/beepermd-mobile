@@ -15,7 +15,7 @@ class RestClient{
       "latitude": lat,
       "longitude": long
     });
-
+    print("here is the userId ${body}");
     var url = Uri.parse(BaseURl+apiName);
     final response = await http.Client().post(url,headers: headers,body: body);
     print("THE RESPONSE OF POST ${response.statusCode} and TIME ${DateTime.now()} " );

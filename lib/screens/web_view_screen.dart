@@ -178,8 +178,9 @@ class _WebViewContainerState extends State<WebViewContainer>
                                     .containsValue('userIdForMobileApp') ??
                                 false) {
                               userIdForMobileApp =
-                                  data!.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
+                                  data!.nodes[0];
+                              print("here is the userId ${userIdForMobileApp.data}");
+                              saveUserIDinPrefs(userIdForMobileApp.data);
                             }
                             bool serviceEnabled =
                                 await Geolocator.isLocationServiceEnabled();
