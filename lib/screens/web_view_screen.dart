@@ -164,23 +164,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                             }
                             await _handleLocationPerm();
                             await _handleCameraPermission();
-                            if (Platform.isAndroid) {
-                              bool serviceEnabled =
-                                  await Geolocator.isLocationServiceEnabled();
-                              print(
-                                  "Is location service enabled $serviceEnabled");
-
-                              if (serviceEnabled == true) {
-                                BackgroundService().initializeService();
-                              }
-                            } else if (Platform.isIOS) {
-
-                              getCurrentLocation();
-                            }
-                          } else {
-                            if (Platform.isAndroid) {
-                              BackgroundService().stopService();
-                            }
+                            getCurrentLocation();
                           }
                         },
                       ),
@@ -328,7 +312,7 @@ class _WebViewContainerState extends State<WebViewContainer>
     setState(() {
       _connectionStatus = result;
       if (_connectionStatus.name == 'none') {
-        BackgroundService().stopService();
+
       } else {
         // BackgroundService().initializeService();
       }
@@ -440,156 +424,5 @@ class BeeperMDWidget2 extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class LocationWidget2 extends StatefulWidget {
-  const LocationWidget2({Key? key}) : super(key: key);
-
-  @override
-  State<LocationWidget2> createState() => _LocationWidget2State();
-}
-
-class _LocationWidget2State extends State<LocationWidget2> {
-  bool? serviceEnabled;
-
-  @override
-  Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    return SafeArea(
-      child: Scaffold(
-        body: SizedBox(
-          height: size.height,
-          width: size.width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: size.height * 0.10,
-              ),
-              Icon(
-                Icons.location_on_outlined,
-                color: Colors.blue,
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              Text(
-                "Location Access",
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 22),
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              Text(
-                "Allow to access this device location",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w500,
-                    fontSize: 20),
-              ),
-              SizedBox(
-                height: size.height * 0.15,
-              ),
-              Image.asset(
-                "assets/images/location_access.jpg",
-                scale: 3.3,
-              ),
-              SizedBox(
-                height: size.height * 0.15,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  SizedBox(
-                    height: 45,
-                    width: 150,
-                    child: ElevatedButton(
-                        child: Text("No Thanks".toUpperCase(),
-                            style: TextStyle(fontSize: 14)),
-                        style: ButtonStyle(
-                            foregroundColor:
-                                MaterialStateProperty.all<Color>(Colors.white),
-                            backgroundColor:
-                                MaterialStateProperty.all<Color>(Colors.grey),
-                            shape: MaterialStateProperty.all<
-                                    RoundedRectangleBorder>(
-                                RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Colors.grey)))),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        }),
-                  ),
-                  SizedBox(
-                    height: 45,
-                    width: 150,
-                    child: ElevatedButton(
-                      child: Text("Trun On".toUpperCase(),
-                          style: TextStyle(fontSize: 14)),
-                      style: ButtonStyle(
-                          foregroundColor:
-                              MaterialStateProperty.all<Color>(Colors.white),
-                          backgroundColor: MaterialStateProperty.all<Color>(
-                              Color(0xff73BF2C)),
-                          shape: MaterialStateProperty.all<
-                                  RoundedRectangleBorder>(
-                              RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: Color(0xff73BF2C))))),
-                      onPressed: _permissionStatus == PermissionStatus.granted
-                          ? getCurrentLocation
-                          : requestPermission,
-                    ),
-                  ),
-                ],
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Position? _currentPosition;
-  PermissionStatus _permissionStatus = PermissionStatus.denied;
-
-  @override
-  void initState() {
-    super.initState();
-    checkPermissionStatus();
-  }
-
-  void checkPermissionStatus() async {
-    PermissionStatus status = await Permission.locationWhenInUse.status;
-    setState(() {
-      _permissionStatus = status;
-    });
-  }
-
-  void requestPermission() async {
-    PermissionStatus status = await Permission.locationWhenInUse.request();
-    setState(() {
-      _permissionStatus = status;
-    });
-    if (_permissionStatus == PermissionStatus.granted) {
-      getCurrentLocation();
-    }
-  }
-
-  void getCurrentLocation() async {
-    if (_permissionStatus == PermissionStatus.granted) {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      setState(() {
-        _currentPosition = position;
-      });
-    } else {
-      // Handle if permission is not granted
-    }
   }
 }
