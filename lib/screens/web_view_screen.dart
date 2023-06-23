@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -12,6 +13,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,7 +52,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   var userIdForMobileApp;
   DateTime? backButtonPressTime;
   final CookieManager _cookieManager = CookieManager.instance();
-
+  String? actualFilePath;
   static const snackBarDuration = Duration(seconds: 3);
 
   final snackBar = const SnackBar(
@@ -124,6 +126,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                         initialSettings: InAppWebViewSettings(
                             supportZoom: false,
                             useHybridComposition: true,
+                            useOnDownloadStart: true,
                             disableDefaultErrorPage: true),
                         pullToRefreshController: pullToRefreshController,
                         initialUrlRequest:
@@ -189,9 +192,24 @@ class _WebViewContainerState extends State<WebViewContainer>
                             if (serviceEnabled == true) {
                               BackgroundService().initializeService();
                             }
+                          } else if(url.rawValue == "${BASE_URL}patient/#/home"){
+                            await _handleStoragePermission();
                           } else {
                             BackgroundService().stopService();
                           }
+                        },
+                        onDownloadStartRequest: (controller, url) async {
+                          print("onDownloadStart ${url.url.path}");
+                          await callFolderCreationMethod("storage/beepermd/reports");
+                          print("Downloading");
+                          try {
+                            await Dio().download(url.url.path,
+                                "${actualFilePath!}/filename.pdf");
+                            print("Download Completed.");
+                          } catch (e) {
+                            print("Download Failed.\n\n" + e.toString());
+                          }
+
                         },
                       ),
                     )
@@ -240,6 +258,30 @@ class _WebViewContainerState extends State<WebViewContainer>
         ],
       ),
     );
+  }
+  Future<String> createFolderInAppDocDir(String folderName) async {
+    //Get this App Document Directory
+
+    final Directory _appDocDir = await getApplicationDocumentsDirectory();
+    //App Document Directory + folder name
+    final Directory _appDocDirFolder =
+    Directory('${_appDocDir.path}/$folderName/');
+
+    if (await _appDocDirFolder.exists()) {
+      //if folder already exists return path
+      return _appDocDirFolder.path;
+    } else {
+      //if folder not exists create folder and then return its path
+      final Directory _appDocDirNewFolder =
+      await _appDocDirFolder.create(recursive: true);
+      return _appDocDirNewFolder.path;
+    }
+  }
+
+  callFolderCreationMethod(String folderInAppDocDir) async {
+    // ignore: unused_local_variable
+    actualFilePath = await createFolderInAppDocDir(folderInAppDocDir);
+    print("patttt $actualFilePath");
   }
 
   Future<bool> handleWillPop(BuildContext context) async {
@@ -294,6 +336,24 @@ class _WebViewContainerState extends State<WebViewContainer>
       }
     });
   }
+
+  Future<bool> _handleStoragePermission() async {
+    // bool serviceEnabled;
+    PermissionStatus result;
+    if (Platform.isAndroid) {
+      result = (await Permission.storage.request());
+      if (result.isGranted) {
+        // Either the permission was already granted before or the user just granted it.
+        print("Storage Permission is granted");
+        return true;
+      } else {
+        print("Storage Permission is denied.");
+        return false;
+      }
+    }
+    return false;
+  }
+
 }
 
 class BeeperMDWidget extends StatelessWidget {
@@ -548,11 +608,12 @@ class _LocationWidget2State extends State<LocationWidget2> {
 
       if (serviceEnabled == true) {
         BackgroundService().initializeService();
-        _handleCameraPermission();
+        await _handleCameraPermission();
         Navigator.pop(context);
       }
     }
   }
+
 
   Future<bool> _handleCameraPermission() async {
     // bool serviceEnabled;
