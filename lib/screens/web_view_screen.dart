@@ -16,8 +16,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
-// const BASE_URL = 'http://54.163.228.123/'; //STAG
-const BASE_URL = 'https://beepermd.com/'; //PROD
+const BASE_URL = 'http://54.163.228.123/'; //STAG
+// const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
