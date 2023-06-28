@@ -7,7 +7,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
@@ -18,9 +17,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 const fetchBackground = "fetchBackground";
 const BASE_URL = 'http://54.163.228.123/'; //STAG
 // const BASE_URL = 'https://beepermd.com/'; //PROD
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 class WebViewContainer extends StatefulWidget {
   const WebViewContainer({super.key});
