@@ -1,19 +1,18 @@
 import 'dart:async';
-import 'dart:developer' as developer;
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -136,6 +135,27 @@ class _WebViewContainerState extends State<WebViewContainer>
                           _webViewController = controller;
                         },
                         onLoadStop: (controller, url) async {
+
+                          controller.addJavaScriptHandler(handlerName: "blobToBase64Handler", callback: (args) async {
+                            // Here you receive all the arguments from the JavaScript side
+                            var bytes = base64Decode(args[0]);
+                            await callFolderCreationMethod();
+                            DateTime now = DateTime.now();
+                            String fileName = "Test Report-${now.microsecondsSinceEpoch}.pdf";
+                            final file = File("$actualFilePath/$fileName");
+                            await file.writeAsBytes(bytes.buffer.asUint8List());
+                            Navigator.of(context).pop();
+                            Fluttertoast.showToast(
+                                msg: 'Test result downloaded, please check your downloads folder.',
+                                webPosition: "right",
+                                webShowClose: true,
+                                toastLength: Toast.LENGTH_LONG,
+                                gravity: ToastGravity.TOP,
+                                backgroundColor: Colors.green,
+                                textColor: Colors.white,
+                                fontSize: 16.0);
+                            return args.reduce((curr, next) => curr + next);
+                          });
                           setState(() {
                             isApiLoaded = false;
                             isVisible = false;
@@ -200,17 +220,11 @@ class _WebViewContainerState extends State<WebViewContainer>
                           }
                         },
                         onDownloadStartRequest: (controller, url) async {
+                          buildShowDialog(context);
                           print("onDownloadStart ${url.url.path}");
-                          await callFolderCreationMethod("storage/beepermd/reports");
-                          print("Downloading");
-                          try {
-                            await Dio().download(url.url.path,
-                                "${actualFilePath!}/filename.pdf");
-                            print("Download Completed.");
-                          } catch (e) {
-                            print("Download Failed.\n\n" + e.toString());
-                          }
-
+                          var jsContent = await rootBundle.loadString("assets/js/base64.js");
+                          var result = await controller.evaluateJavascript(
+                              source: jsContent.replaceAll("blobUrlPlaceholder",url.url.toString()));
                         },
                       ),
                     )
@@ -260,13 +274,11 @@ class _WebViewContainerState extends State<WebViewContainer>
       ),
     );
   }
-  Future<String> createFolderInAppDocDir(String folderName) async {
+  Future<String> createFolderInAppDocDir() async {
     //Get this App Document Directory
 
-    final Directory _appDocDir = await getApplicationDocumentsDirectory();
-    //App Document Directory + folder name
     final Directory _appDocDirFolder =
-    Directory('${_appDocDir.path}/$folderName/');
+    Directory('/storage/emulated/0/Download');
 
     if (await _appDocDirFolder.exists()) {
       //if folder already exists return path
@@ -279,9 +291,9 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
   }
 
-  callFolderCreationMethod(String folderInAppDocDir) async {
+  callFolderCreationMethod() async {
     // ignore: unused_local_variable
-    actualFilePath = await createFolderInAppDocDir(folderInAppDocDir);
+    actualFilePath = await createFolderInAppDocDir();
     print("patttt $actualFilePath");
   }
 
@@ -318,7 +330,7 @@ class _WebViewContainerState extends State<WebViewContainer>
       });
       print("Connection status $isVisible");
     } on PlatformException catch (e) {
-      developer.log('Couldn\'t check connectivity status', error: e);
+      print('Couldn\'t check connectivity status $e');
       return;
     }
     if (!mounted) {
@@ -354,7 +366,16 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
     return false;
   }
-
+  buildShowDialog(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.green),),
+          );
+        });
+  }
 }
 
 class BeeperMDWidget extends StatelessWidget {

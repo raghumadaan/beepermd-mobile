@@ -171,15 +171,3 @@ Future<void> getCurrentLocation() async {
     debugPrint("THE ERROR IN THE SERVICE $e");
   });
 }
-
-void showToast(String message){
-  Fluttertoast.showToast(
-      msg: message,
-      webPosition: "right",
-      webShowClose: true,
-      toastLength: Toast.LENGTH_LONG,
-      gravity: ToastGravity.TOP,
-      backgroundColor: Colors.green,
-      textColor: Colors.white,
-      fontSize: 16.0);
-}
