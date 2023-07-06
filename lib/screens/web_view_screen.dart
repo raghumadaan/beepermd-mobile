@@ -47,7 +47,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   bool isPageValid = false;
 
   bool? serviceEnabled;
-
+  late String fileFormat;
   bool isApiLoaded = true;
   var userIdForMobileApp;
   DateTime? backButtonPressTime;
@@ -141,7 +141,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                             var bytes = base64Decode(args[0]);
                             await callFolderCreationMethod();
                             DateTime now = DateTime.now();
-                            String fileName = "Test Report-${now.microsecondsSinceEpoch}.pdf";
+                            String fileName = "Test Report-${now.microsecondsSinceEpoch}.$fileFormat";
                             final file = File("$actualFilePath/$fileName");
                             await file.writeAsBytes(bytes.buffer.asUint8List());
                             Navigator.of(context).pop();
@@ -222,6 +222,18 @@ class _WebViewContainerState extends State<WebViewContainer>
                         onDownloadStartRequest: (controller, url) async {
                           buildShowDialog(context);
                           print("onDownloadStart ${url.url.path}");
+
+                          String urlLink = url.url.path;
+                          if(urlLink.contains("pdf")) {
+                            fileFormat = "pdf";
+                          } else if(urlLink.contains("jpg")) {
+                            fileFormat = "jpg";
+                          } else if(urlLink.contains("jpeg")) {
+                            fileFormat = "jpeg";
+                          } else if(urlLink.contains("png")) {
+                            fileFormat = "png";
+                          }
+
                           var jsContent = await rootBundle.loadString("assets/js/base64.js");
                           var result = await controller.evaluateJavascript(
                               source: jsContent.replaceAll("blobUrlPlaceholder",url.url.toString()));
