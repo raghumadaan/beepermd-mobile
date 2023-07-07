@@ -47,7 +47,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   bool isPageValid = false;
 
   bool? serviceEnabled;
-  late String fileFormat;
+  String fileFormat = "";
   bool isApiLoaded = true;
   var userIdForMobileApp;
   DateTime? backButtonPressTime;
@@ -223,7 +223,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                           buildShowDialog(context);
                           print("onDownloadStart ${url.url.path}");
 
-                          String urlLink = url.url.path;
+                          String urlLink = url.contentDisposition!;
                           if(urlLink.contains("pdf")) {
                             fileFormat = "pdf";
                           } else if(urlLink.contains("jpg")) {
