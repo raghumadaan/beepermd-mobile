@@ -135,27 +135,31 @@ class _WebViewContainerState extends State<WebViewContainer>
                           _webViewController = controller;
                         },
                         onLoadStop: (controller, url) async {
-
-                          controller.addJavaScriptHandler(handlerName: "blobToBase64Handler", callback: (args) async {
-                            // Here you receive all the arguments from the JavaScript side
-                            var bytes = base64Decode(args[0]);
-                            await callFolderCreationMethod();
-                            DateTime now = DateTime.now();
-                            String fileName = "Test Report-${now.microsecondsSinceEpoch}.$fileFormat";
-                            final file = File("$actualFilePath/$fileName");
-                            await file.writeAsBytes(bytes.buffer.asUint8List());
-                            Navigator.of(context).pop();
-                            Fluttertoast.showToast(
-                                msg: 'Test result downloaded, please check your downloads folder.',
-                                webPosition: "right",
-                                webShowClose: true,
-                                toastLength: Toast.LENGTH_LONG,
-                                gravity: ToastGravity.TOP,
-                                backgroundColor: Colors.green,
-                                textColor: Colors.white,
-                                fontSize: 16.0);
-                            return args.reduce((curr, next) => curr + next);
-                          });
+                          controller.addJavaScriptHandler(
+                              handlerName: "blobToBase64Handler",
+                              callback: (args) async {
+                                // Here you receive all the arguments from the JavaScript side
+                                var bytes = base64Decode(args[0]);
+                                await callFolderCreationMethod();
+                                DateTime now = DateTime.now();
+                                String fileName =
+                                    "Test Report-${now.microsecondsSinceEpoch}.$fileFormat";
+                                final file = File("$actualFilePath/$fileName");
+                                await file
+                                    .writeAsBytes(bytes.buffer.asUint8List());
+                                Navigator.of(context).pop();
+                                Fluttertoast.showToast(
+                                    msg:
+                                        'Test result downloaded, please check your downloads folder.',
+                                    webPosition: "right",
+                                    webShowClose: true,
+                                    toastLength: Toast.LENGTH_LONG,
+                                    gravity: ToastGravity.TOP,
+                                    backgroundColor: Colors.green,
+                                    textColor: Colors.white,
+                                    fontSize: 16.0);
+                                return args.reduce((curr, next) => curr + next);
+                              });
                           setState(() {
                             isApiLoaded = false;
                             isVisible = false;
@@ -201,9 +205,9 @@ class _WebViewContainerState extends State<WebViewContainer>
                             if (data?.attributes
                                     .containsValue('userIdForMobileApp') ??
                                 false) {
-                              userIdForMobileApp =
-                                  data!.nodes[0];
-                              print("here is the userId ${userIdForMobileApp.data}");
+                              userIdForMobileApp = data!.nodes[0];
+                              print(
+                                  "here is the userId ${userIdForMobileApp.data}");
                               saveUserIDinPrefs(userIdForMobileApp.data);
                             }
                             bool serviceEnabled =
@@ -213,7 +217,8 @@ class _WebViewContainerState extends State<WebViewContainer>
                             if (serviceEnabled == true) {
                               BackgroundService().initializeService();
                             }
-                          } else if(url.rawValue == "${BASE_URL}patient/#/home"){
+                          } else if (url.rawValue ==
+                              "${BASE_URL}patient/#/home") {
                             await _handleStoragePermission();
                           } else {
                             BackgroundService().stopService();
@@ -224,19 +229,27 @@ class _WebViewContainerState extends State<WebViewContainer>
                           print("onDownloadStart ${url.url.path}");
 
                           String urlLink = url.contentDisposition!;
-                          if(urlLink.contains("pdf")) {
-                            fileFormat = "pdf";
-                          } else if(urlLink.contains("jpg")) {
-                            fileFormat = "jpg";
-                          } else if(urlLink.contains("jpeg")) {
-                            fileFormat = "jpeg";
-                          } else if(urlLink.contains("png")) {
-                            fileFormat = "png";
+                          if (urlLink != "") {
+                            if (urlLink.contains("pdf")) {
+                              fileFormat = "pdf";
+                            } else if (urlLink.contains("jpg")) {
+                              fileFormat = "jpg";
+                            } else if (urlLink.contains("jpeg")) {
+                              fileFormat = "jpeg";
+                            } else if (urlLink.contains("png")) {
+                              fileFormat = "png";
+                            }
+                          } else if (url.suggestedFilename != null) {
+                            if (url.suggestedFilename!.contains("pdf")) {
+                              fileFormat = "pdf";
+                            }
                           }
 
-                          var jsContent = await rootBundle.loadString("assets/js/base64.js");
+                          var jsContent = await rootBundle
+                              .loadString("assets/js/base64.js");
                           var result = await controller.evaluateJavascript(
-                              source: jsContent.replaceAll("blobUrlPlaceholder",url.url.toString()));
+                              source: jsContent.replaceAll(
+                                  "blobUrlPlaceholder", url.url.toString()));
                         },
                       ),
                     )
@@ -286,11 +299,12 @@ class _WebViewContainerState extends State<WebViewContainer>
       ),
     );
   }
+
   Future<String> createFolderInAppDocDir() async {
     //Get this App Document Directory
 
     final Directory _appDocDirFolder =
-    Directory('/storage/emulated/0/Download');
+        Directory('/storage/emulated/0/Download');
 
     if (await _appDocDirFolder.exists()) {
       //if folder already exists return path
@@ -298,7 +312,7 @@ class _WebViewContainerState extends State<WebViewContainer>
     } else {
       //if folder not exists create folder and then return its path
       final Directory _appDocDirNewFolder =
-      await _appDocDirFolder.create(recursive: true);
+          await _appDocDirFolder.create(recursive: true);
       return _appDocDirNewFolder.path;
     }
   }
@@ -378,13 +392,16 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
     return false;
   }
+
   buildShowDialog(BuildContext context) {
     return showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
           return Center(
-            child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.green),),
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
           );
         });
   }
@@ -647,7 +664,6 @@ class _LocationWidget2State extends State<LocationWidget2> {
       }
     }
   }
-
 
   Future<bool> _handleCameraPermission() async {
     // bool serviceEnabled;
