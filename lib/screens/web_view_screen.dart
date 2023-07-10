@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +16,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
-const BASE_URL = 'http://54.163.228.123/'; //STAG
-// const BASE_URL = 'https://beepermd.com/'; //PROD
+// const BASE_URL = 'http://54.163.228.123/'; //STAG_1
+// const BASE_URL = 'http://54.205.107.161/'; //STAG_2
+const BASE_URL = 'https://beepermd.com/'; //PROD
+String _authStatus = 'Unknown';
 
 class WebViewContainer extends StatefulWidget {
   const WebViewContainer({super.key});
@@ -89,6 +92,26 @@ class _WebViewContainerState extends State<WebViewContainer>
     checkPermissionStatus();
   }
 
+  Future<void> initPlugin() async {
+    // Platform messages may fail, so we use a try/catch PlatformException.
+    try {
+      final TrackingStatus status =
+      await AppTrackingTransparency.trackingAuthorizationStatus;
+      setState(() => _authStatus = '$status');
+      // If the system can show an authorization request dialog
+      if (status == TrackingStatus.notDetermined) {
+        final TrackingStatus status =
+        await AppTrackingTransparency.requestTrackingAuthorization();
+        setState(() => _authStatus = '$status');
+      }
+    } on PlatformException {
+      setState(() => _authStatus = 'PlatformException was thrown');
+    }
+
+    final uuid = await AppTrackingTransparency.getAdvertisingIdentifier();
+    print("UUID: $uuid");
+  }
+
   Future<bool> isUrlValid(String url) async {
     try {
       var response = await http.head(Uri.parse(url));
@@ -156,6 +179,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                                   data!.nodes[0];
                               saveUserIDinPrefs(userIdForMobileApp.data);
                             }
+                            await initPlugin();
                             await _handleLocationPerm();
                             await _handleCameraPermission();
                             getCurrentLocation();
