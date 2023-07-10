@@ -18,8 +18,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
 // const BASE_URL = 'http://54.163.228.123/'; //STAG_1
-const BASE_URL = 'http://54.205.107.161/'; //STAG_2
-// const BASE_URL = 'https://beepermd.com/'; //PROD
+// const BASE_URL = 'http://54.205.107.161/'; //STAG_2
+const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
