@@ -51,8 +51,6 @@
 	<string>This app needs access to location in the foreground.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>NSUserTrackingUsageDescription</key>
-       <string>This app uses your location to help assigned providers to identify your location and estimated time to reach.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
