@@ -48,7 +48,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>To capture document photo please grant camera access</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location in the foreground.</string>
+	<string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
