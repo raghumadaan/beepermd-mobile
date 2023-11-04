@@ -42,10 +42,11 @@ class _WebViewContainerState extends State<WebViewContainer>
   bool? serviceEnabled;
   bool isApiLoaded = true;
   var userIdForMobileApp;
+  String? loggedInUserId = '';
   DateTime? backButtonPressTime;
   final CookieManager _cookieManager = CookieManager.instance();
   static const snackBarDuration = Duration(seconds: 3);
-
+  var initialUrl = '${BASE_URL}patient';
   final snackBar = const SnackBar(
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
@@ -61,6 +62,12 @@ class _WebViewContainerState extends State<WebViewContainer>
     await prefs.setString('userID', userId);
   }
 
+  getUserIdPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    loggedInUserId = prefs.getString('userID') ?? '';
+    setState(() {});
+  }
+
   @override
   void dispose() {
     print("called dispose and closed background service");
@@ -71,7 +78,9 @@ class _WebViewContainerState extends State<WebViewContainer>
   @override
   void initState() {
     super.initState();
+    getUserIdPrefs();
     initConnectivity();
+
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
     pullToRefreshController = PullToRefreshController(
@@ -103,6 +112,11 @@ class _WebViewContainerState extends State<WebViewContainer>
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    if (loggedInUserId!.isNotEmpty) {
+      initialUrl = '${BASE_URL}app/schedule';
+    } else {
+      initialUrl = '${BASE_URL}patient';
+    }
     return Scaffold(
       body: Stack(
         children: [
@@ -118,8 +132,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                             useHybridComposition: true,
                             disableDefaultErrorPage: true),
                         pullToRefreshController: pullToRefreshController,
-                        initialUrlRequest:
-                            URLRequest(url: WebUri('${BASE_URL}patient')),
+                        initialUrlRequest: URLRequest(url: WebUri(initialUrl)),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
@@ -145,6 +158,8 @@ class _WebViewContainerState extends State<WebViewContainer>
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
                           if (url.rawValue == "${BASE_URL}app/schedule") {
+                            await _handleLocationPerm();
+                            await _handleCameraPermission();
                             final response = await http.Client()
                                 .get(Uri.parse(url.rawValue), headers: header);
                             dom.Document document =
@@ -154,12 +169,9 @@ class _WebViewContainerState extends State<WebViewContainer>
                             if (data?.attributes
                                     .containsValue('userIdForMobileApp') ??
                                 false) {
-                              userIdForMobileApp =
-                                  data!.nodes[0];
-                              saveUserIDinPrefs(userIdForMobileApp.data);
+                              userIdForMobileApp = data!.nodes[0];
+                              await saveUserIDinPrefs(userIdForMobileApp.data);
                             }
-                            await _handleLocationPerm();
-                            await _handleCameraPermission();
                             getCurrentLocation();
                           }
                         },
@@ -203,7 +215,7 @@ class _WebViewContainerState extends State<WebViewContainer>
           Positioned(
               child: Visibility(
             visible: isLoading,
-            child: LinearProgressIndicator(
+            child: const LinearProgressIndicator(
               color: Colors.blueAccent,
             ),
           ))
@@ -304,7 +316,6 @@ class _WebViewContainerState extends State<WebViewContainer>
     setState(() {
       _connectionStatus = result;
       if (_connectionStatus.name == 'none') {
-
       } else {
         // BackgroundService().initializeService();
       }
