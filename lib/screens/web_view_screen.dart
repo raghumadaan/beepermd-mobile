@@ -48,24 +48,45 @@ class _WebViewContainerState extends State<WebViewContainer>
   String fileFormat = "";
   bool isApiLoaded = true;
   var userIdForMobileApp;
+  String? patientCookie = '';
+  String? providerCookie = '';
+  String? loggedInUserId = '';
+
   DateTime? backButtonPressTime;
   final CookieManager _cookieManager = CookieManager.instance();
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   String? actualFilePath;
   static const snackBarDuration = Duration(seconds: 3);
+  var initialUrl = '${BASE_URL_WEB}patient';
 
   final snackBar = const SnackBar(
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
   );
 
-  getCookiesAndSaveInPref(String sessionId, WebUri url) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('Cookie1', sessionId);
+  getCookiesAndSaveInPref(String sessionId, String userType) async {
+    final SharedPreferences prefs = await _prefs;
+    await prefs.setString(userType, sessionId);
   }
 
   saveUserIDinPrefs(String userId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userID', userId);
+  }
+
+  getUserIdPrefs() async {
+    final SharedPreferences prefs = await _prefs;
+    loggedInUserId = prefs.getString('userID') ?? '';
+  }
+
+  getPatientCookie() async {
+    final SharedPreferences prefs = await _prefs;
+    patientCookie = prefs.getString('patient') ?? '';
+  }
+
+  getProviderCookie() async {
+    final SharedPreferences prefs = await _prefs;
+    providerCookie = prefs.getString('provider') ?? '';
   }
 
   @override
@@ -78,6 +99,8 @@ class _WebViewContainerState extends State<WebViewContainer>
   void initState() {
     super.initState();
     initConnectivity();
+    getPatientCookie();
+    getProviderCookie();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
     pullToRefreshController = PullToRefreshController(
@@ -105,11 +128,29 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
   }
 
+  Future<String> getCookie(url, userType) async {
+    String sessionId = "";
+    List<Cookie> cookies = await _cookieManager.getCookies(url: url!);
+    for (var i = 0; i < cookies.length; i++) {
+      if (cookies[i].name == 'JSESSIONID') {
+        getCookiesAndSaveInPref(cookies[i].value, userType);
+        sessionId = cookies[i].value;
+        break;
+      }
+    }
+    return sessionId;
+  }
+
   bool isFirst = true;
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    if (providerCookie!.isNotEmpty) {
+      initialUrl = '${BASE_URL_WEB}app/schedule';
+    } else if (patientCookie!.isNotEmpty) {
+      initialUrl = '${BASE_URL_WEB}patient/#/home';
+    }
     return Scaffold(
       body: Stack(
         children: [
@@ -132,6 +173,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                           _webViewController = controller;
                         },
                         onLoadStop: (controller, url) async {
+                          final SharedPreferences prefs = await _prefs;
                           controller.addJavaScriptHandler(
                               handlerName: "blobToBase64Handler",
                               callback: (args) async {
@@ -166,18 +208,12 @@ class _WebViewContainerState extends State<WebViewContainer>
                           _connectivitySubscription = _connectivity
                               .onConnectivityChanged
                               .listen(_updateConnectionStatus);
-                          List<Cookie> cookies =
-                              await _cookieManager.getCookies(url: url!);
-                          for (var i = 0; i < cookies.length; i++) {
-                            if (cookies[i].name == 'JSESSIONID') {
-                              getCookiesAndSaveInPref(cookies[i].value, url);
-                            }
-                          }
 
-                          final prefs = await SharedPreferences.getInstance();
-                          var sessionID = prefs.getString('Cookie1');
-                          var header = {"Cookie": "JSESSIONID=$sessionID"};
-                          if (url.rawValue == "${BASE_URL_WEB}app/schedule") {
+                          if (url?.rawValue == "${BASE_URL_WEB}app/schedule") {
+                            prefs.remove("patient");
+                            patientCookie = '';
+                            String sessionId = await getCookie(url, "provider");
+                            var header = {"Cookie": "JSESSIONID=$sessionId"};
                             var status =
                                 await Permission.locationWhenInUse.status;
                             if (isFirst) {
@@ -193,7 +229,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                               } else {}
                             }
                             final response = await http.Client()
-                                .get(Uri.parse(url.rawValue), headers: header);
+                                .get(Uri.parse(url!.rawValue), headers: header);
                             dom.Document document =
                                 htmlparser.parse(response.body);
                             var data =
@@ -216,8 +252,12 @@ class _WebViewContainerState extends State<WebViewContainer>
                                 status == PermissionStatus.granted) {
                               BackgroundService().initializeService();
                             }
-                          } else if (url.rawValue ==
+                          } else if (url?.rawValue ==
                               "${BASE_URL_WEB}patient/#/home") {
+                            prefs.remove("provider");
+                            providerCookie = '';
+                            String sessionId = await getCookie(url, "patient");
+                            print("debugger in else if condition $sessionId");
                             await _handleStoragePermission();
                           } else {
                             BackgroundService().stopService();

@@ -48,7 +48,10 @@ dependencies:
       url: https://github.com/Almoullim/background_location.git
       ref: v0.9.0
   http: ^0.13.5
-  flutter_inappwebview: ^6.0.0-22
+  flutter_inappwebview:
+    git:
+      url: https://github.com/Estrelio/flutter_inappwebview.git
+      ref: fix-xcode-17
   shared_preferences: ^2.0.15
   fluttertoast: ^8.2.2
 
