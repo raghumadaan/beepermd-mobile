@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:beepermd/core/data/remote/rest_client.dart';
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -15,10 +16,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
-// const BASE_URL = 'http://54.163.228.123/'; //STAG_1
-// const BASE_URL = 'http://54.205.107.161/'; //STAG_2
-const BASE_URL = 'https://beepermd.com/'; //PROD
-String _authStatus = 'Unknown';
 
 class WebViewContainer extends StatefulWidget {
   const WebViewContainer({super.key});
@@ -50,7 +47,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   final CookieManager _cookieManager = CookieManager.instance();
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   static const snackBarDuration = Duration(seconds: 3);
-  var initialUrl = '${BASE_URL}patient';
+  var initialUrl = '${BASE_URL_WEB}patient';
   final snackBar = const SnackBar(
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
@@ -140,9 +137,9 @@ class _WebViewContainerState extends State<WebViewContainer>
     Size size = MediaQuery.of(context).size;
 
     if (providerCookie!.isNotEmpty) {
-      initialUrl = '${BASE_URL}app/schedule';
+      initialUrl = '${BASE_URL_WEB}app/schedule';
     } else if (patientCookie!.isNotEmpty) {
-      initialUrl = '${BASE_URL}patient/#/home';
+      initialUrl = '${BASE_URL_WEB}patient/#/home';
     }
 
     return Scaffold(
@@ -177,7 +174,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                               .onConnectivityChanged
                               .listen(_updateConnectionStatus);
 
-                          if (url?.rawValue == "${BASE_URL}app/schedule") {
+                          if (url?.rawValue == "${BASE_URL_WEB}app/schedule") {
                             prefs.remove("patient");
                             patientCookie = '';
                             String sessionId = await getCookie(url, "provider");
@@ -198,7 +195,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                             }
                             getCurrentLocation();
                           } else if (url?.rawValue ==
-                              "${BASE_URL}patient/#/home") {
+                              "${BASE_URL_WEB}patient/#/home") {
                             prefs.remove("provider");
                             providerCookie = '';
                             String sessionId = await getCookie(url, "patient");
