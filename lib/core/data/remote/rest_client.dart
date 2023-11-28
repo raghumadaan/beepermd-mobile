@@ -12,15 +12,11 @@ class RestClient {
       "Cookie": "JSESSIONID=$sessionID",
       "Content-Type": "application/json"
     };
-    print("Here the docId from user $docId");
     var body =
         jsonEncode({"userId": docId, "latitude": lat, "longitude": long});
-    print("Here is the request body $body");
     var url = Uri.parse(BASE_URL + apiName);
     final response =
         await http.Client().post(url, headers: headers, body: body);
-    print(
-        "THE RESPONSE OF POST ${response.statusCode} and TIME ${DateTime.now()} ");
     return response;
   }
 }

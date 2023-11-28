@@ -128,7 +128,7 @@ class BackgroundService {
 
 Future<void> getCurrentLocation() async {
   final prefs = await SharedPreferences.getInstance();
-  var session = prefs.get('Cookie1');
+  var session = prefs.get('provider');
   var userId = prefs.get('userID');
 
   Connectivity _connectivity = Connectivity();
@@ -172,7 +172,7 @@ Future<void> getCurrentLocation() async {
   });
 }
 
-void showToast(String message){
+void showToast(String message) {
   Fluttertoast.showToast(
       msg: message,
       webPosition: "right",

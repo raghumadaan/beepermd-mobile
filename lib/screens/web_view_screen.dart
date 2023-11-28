@@ -129,6 +129,7 @@ class _WebViewContainerState extends State<WebViewContainer>
       if (cookies[i].name == 'JSESSIONID') {
         getCookiesAndSaveInPref(cookies[i].value, userType);
         sessionId = cookies[i].value;
+        break;
       }
     }
     return sessionId;
