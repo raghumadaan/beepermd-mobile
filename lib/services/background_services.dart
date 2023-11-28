@@ -146,7 +146,6 @@ Future<void> getCurrentLocation() async {
   );
   Geolocator.getPositionStream(locationSettings: locationSettings)
       .listen((Position? position) {
-    print("THE CURRENT POSITION IS $position");
     Timer.periodic(const Duration(seconds: 30), (timer) async {
       print("THE CURRENT POSITION IS $position");
       if (result.name != 'none') {

@@ -127,7 +127,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                             disableDefaultErrorPage: true),
                         pullToRefreshController: pullToRefreshController,
                         initialUrlRequest:
-                            URLRequest(url: WebUri('${BASE_URL}patient')),
+                            URLRequest(url: WebUri('${BASE_URL_WEB}patient')),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
@@ -177,7 +177,7 @@ class _WebViewContainerState extends State<WebViewContainer>
                           final prefs = await SharedPreferences.getInstance();
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
-                          if (url.rawValue == "${BASE_URL}app/schedule") {
+                          if (url.rawValue == "${BASE_URL_WEB}app/schedule") {
                             var status =
                                 await Permission.locationWhenInUse.status;
                             if (isFirst) {
@@ -212,11 +212,12 @@ class _WebViewContainerState extends State<WebViewContainer>
                                 await Geolocator.isLocationServiceEnabled();
                             print(
                                 "Is location service enabled $serviceEnabled");
-                            if (serviceEnabled == true) {
+                            if (serviceEnabled == true &&
+                                status == PermissionStatus.granted) {
                               BackgroundService().initializeService();
                             }
                           } else if (url.rawValue ==
-                              "${BASE_URL}patient/#/home") {
+                              "${BASE_URL_WEB}patient/#/home") {
                             await _handleStoragePermission();
                           } else {
                             BackgroundService().stopService();
