@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:beepermd/core/data/remote/rest_client.dart';
 import 'package:beepermd/services/background_services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -17,9 +18,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const fetchBackground = "fetchBackground";
-// const BASE_URL = 'http://54.163.228.123/'; //STAG_1
-const BASE_URL = 'http://54.205.107.161/'; //STAG_2
-// const BASE_URL = 'https://beepermd.com/'; //PROD
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -72,7 +70,6 @@ class _WebViewContainerState extends State<WebViewContainer>
 
   @override
   void dispose() {
-    print("called dispose and closed background service");
     BackgroundService().stopService();
     super.dispose();
   }
@@ -131,17 +128,13 @@ class _WebViewContainerState extends State<WebViewContainer>
                         pullToRefreshController: pullToRefreshController,
                         initialUrlRequest:
                             URLRequest(url: WebUri('${BASE_URL}patient')),
-
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
-
-                          // controller.evaluateJavascript(source: "document.getElementById('admitPatientBtn').click()");
                         },
                         onLoadStop: (controller, url) async {
                           controller.addJavaScriptHandler(
                               handlerName: "blobToBase64Handler",
                               callback: (args) async {
-                                // Here you receive all the arguments from the JavaScript side
                                 var bytes = base64Decode(args[0]);
                                 await callFolderCreationMethod();
                                 DateTime now = DateTime.now();
@@ -323,9 +316,8 @@ class _WebViewContainerState extends State<WebViewContainer>
   }
 
   callFolderCreationMethod() async {
-    // ignore: unused_local_variable
     actualFilePath = await createFolderInAppDocDir();
-    print("patttt $actualFilePath");
+    print("path $actualFilePath");
   }
 
   Future<bool> handleWillPop(BuildContext context) async {
@@ -543,24 +535,24 @@ class _LocationWidget2State extends State<LocationWidget2> {
               SizedBox(
                 height: size.height * 0.10,
               ),
-              Icon(
+              const Icon(
                 Icons.location_on_outlined,
                 color: Colors.blue,
               ),
-              SizedBox(
+              const SizedBox(
                 height: 10,
               ),
-              Text(
+              const Text(
                 "Use your location",
                 style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w600,
                     fontSize: 22),
               ),
-              SizedBox(
+              const SizedBox(
                 height: 10,
               ),
-              Text(
+              const Text(
                 "BeeperMD App collects location data to share provider's real time location updates with patients",
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -612,13 +604,13 @@ class _LocationWidget2State extends State<LocationWidget2> {
                             foregroundColor:
                                 MaterialStateProperty.all<Color>(Colors.white),
                             backgroundColor: MaterialStateProperty.all<Color>(
-                                Color(0xff73BF2C)),
+                                const Color(0xff73BF2C)),
                             shape: MaterialStateProperty.all<
                                     RoundedRectangleBorder>(
                                 RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    side:
-                                        BorderSide(color: Color(0xff73BF2C))))),
+                                    side: const BorderSide(
+                                        color: Color(0xff73BF2C))))),
                         onPressed: () {
                           // _permissionStatus == PermissionStatus.granted
                           //     ? getCurrentLocation
