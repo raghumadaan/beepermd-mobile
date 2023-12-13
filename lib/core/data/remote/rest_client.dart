@@ -21,6 +21,7 @@ class RestClient {
     var url = Uri.parse(BASE_URL_BACKEND + apiName);
     final response =
         await http.Client().post(url, headers: headers, body: body);
+    print("Here is the response ${response.body}");
     return response;
   }
 }

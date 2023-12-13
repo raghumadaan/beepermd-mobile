@@ -42,7 +42,7 @@ dependencies:
   flutter_background_service: ^2.4.6
   connectivity_plus: ^1.0.5
   device_info_plus: ^8.0.0
-  permission_handler: ^10.2.0
+  permission_handler: ^11.1.0
   background_location:
     git:
       url: https://github.com/Almoullim/background_location.git

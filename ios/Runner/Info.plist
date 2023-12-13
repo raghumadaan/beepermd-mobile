@@ -23,7 +23,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.1</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -40,7 +40,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>9</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>FlutterDeepLinkingEnabled</key>
 	<true/>
 	<key>LSRequiresIPhoneOS</key>
@@ -48,9 +48,20 @@
 	<key>NSCameraUsageDescription</key>
 	<string>To capture document photo please grant camera access</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
+	<key>NSLocationUsageDescription</key>
+    <string>Older devices need location.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+    <string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

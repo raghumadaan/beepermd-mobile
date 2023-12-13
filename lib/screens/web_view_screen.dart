@@ -161,12 +161,18 @@ class _WebViewContainerState extends State<WebViewContainer>
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
                         },
+                        onLoadStart: (controller, url) async {
+                          if (url?.rawValue == "${BASE_URL_BACKEND}logout") {
+                            final SharedPreferences prefs = await _prefs;
+                            prefs.clear();
+                            BackgroundService().stopService();
+                          }
+                        },
                         onLoadStop: (controller, url) async {
                           final SharedPreferences prefs = await _prefs;
                           setState(() {
                             isApiLoaded = false;
                             isVisible = false;
-                            print("Load stop status $isVisible");
                           });
                           pullToRefreshController?.endRefreshing();
                           initConnectivity();
@@ -179,8 +185,6 @@ class _WebViewContainerState extends State<WebViewContainer>
                             patientCookie = '';
                             String sessionId = await getCookie(url, "provider");
                             var header = {"Cookie": "JSESSIONID=$sessionId"};
-                            await _handleLocationPerm();
-                            await _handleCameraPermission();
                             final response = await http.Client()
                                 .get(Uri.parse(url!.rawValue), headers: header);
                             dom.Document document =
@@ -193,13 +197,12 @@ class _WebViewContainerState extends State<WebViewContainer>
                               userIdForMobileApp = data!.nodes[0];
                               await saveUserIDinPrefs(userIdForMobileApp.data);
                             }
-                            getCurrentLocation();
+                            await _handleLocationPerm();
+                            await _handleCameraPermission();
                           } else if (url?.rawValue ==
                               "${BASE_URL_WEB}patient/#/home") {
                             prefs.remove("provider");
                             providerCookie = '';
-                            String sessionId = await getCookie(url, "patient");
-                            print("debugger in else if condition $sessionId");
                           }
                         },
                       ),
@@ -299,16 +302,64 @@ class _WebViewContainerState extends State<WebViewContainer>
   }
 
   _handleLocationPerm() async {
-    PermissionStatus status = await Permission.location.request();
-    if (status.isGranted) {
-      showToast("Location permission granted");
-      // Location permission granted, proceed with location-related tasks.
-    } else if (status.isDenied) {
-      showToast("Location permission denied");
-      // Location permission denied. Show a message to the user.
-    } else if (status.isPermanentlyDenied) {
-      showToast("Location permission permanently denied");
-      // Location permission permanently denied. Ask the user to go to settings and manually enable it.
+    // PermissionStatus status = await Permission.location.request();
+    // if (status.isGranted) {
+    //   // Location permission granted, proceed with location-related tasks.
+    //   initBackgroundService();
+    // } else if (status.isDenied) {
+    //   showToast(
+    //       "Location permission denied, your location can't tracked by patients.");
+    //   // Location permission denied. Show a message to the user.
+    // } else if (status.isPermanentlyDenied) {
+    //   showToast(
+    //       "Location permission permanently denied, please allow it from setting");
+    //   // Location permission permanently denied. Ask the user to go to settings and manually enable it.
+    // }
+
+    var status = await Permission.locationWhenInUse.status;
+    if (!status.isGranted) {
+      var status = await Permission.locationWhenInUse.request();
+      if (status.isGranted) {
+        var status = await Permission.locationAlways.request();
+        if (status.isGranted) {
+          initBackgroundService();
+        } else {
+          initBackgroundService();
+        }
+      } else if (status.isPermanentlyDenied) {
+        //The user deny the permission
+        showToast(
+            "Location permission permanently denied, please allow it from setting");
+        //Open the screen of settings
+        // bool res = await openAppSettings();
+      } else {
+        //When the user previously rejected the permission and select never ask again
+        showToast(
+            "Location permission denied, your location can't tracked by patients.");
+      }
+    } else {
+      //In use is available, check the always in use
+      var status = await Permission.locationAlways.status;
+      if (!status.isGranted) {
+        var status = await Permission.locationAlways.request();
+        if (status.isGranted) {
+          initBackgroundService();
+        } else {
+          initBackgroundService();
+        }
+      } else {
+        //previously available, do some stuff or nothing
+        initBackgroundService();
+      }
+    }
+  }
+
+  void initBackgroundService() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    print("Is location service enabled $serviceEnabled");
+
+    if (serviceEnabled == true) {
+      BackgroundService().initializeService();
     }
   }
 

@@ -77,12 +77,12 @@ class BackgroundService {
         service.on('setAsBackground').listen((event) {
           FlutterBackgroundService().invoke("setAsBackground");
         });
-        getCurrentLocation();
+        getCurrentLocation(true);
       }
     } else {
       if (service is IOSServiceInstance) {
         try {
-          getCurrentLocation();
+          getCurrentLocation(true);
         } on Exception catch (e) {
           debugPrint("THE ERROR IN THE SERVICE $e");
         }
@@ -115,6 +115,7 @@ class BackgroundService {
   }
 
   Future<void> stopService() async {
+    getCurrentLocation(false);
     final service = FlutterBackgroundService();
     var isRunning = await service.isRunning();
     if (isRunning) {
@@ -126,15 +127,16 @@ class BackgroundService {
   }
 }
 
-Future<void> getCurrentLocation() async {
+Future<void> getCurrentLocation(bool isLoggedIn) async {
   final prefs = await SharedPreferences.getInstance();
   var session = prefs.get('provider');
   var userId = prefs.get('userID');
-
-  Connectivity _connectivity = Connectivity();
+  const locationUpdateInterval = 30;
+  Connectivity connectivity = Connectivity();
   ConnectivityResult result;
+  Timer? timer;
   try {
-    result = await _connectivity.checkConnectivity();
+    result = await connectivity.checkConnectivity();
   } on PlatformException catch (e) {
     developer.log('Couldn\'t check connectivity status', error: e);
     return;
@@ -144,32 +146,41 @@ Future<void> getCurrentLocation() async {
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
   );
-  Geolocator.getPositionStream(locationSettings: locationSettings)
-      .listen((Position? position) {
-    print("THE CURRENT POSITION IS $position");
-    Timer.periodic(const Duration(seconds: 30), (timer) async {
+  if (isLoggedIn == true) {
+    Geolocator.getPositionStream(locationSettings: locationSettings)
+        .listen((Position? position) {
       print("THE CURRENT POSITION IS $position");
-      if (result.name != 'none') {
-        RestClient().post('user/saveLatLong', session, position?.latitude,
-            position?.longitude, userId);
-      } else {
-        Fluttertoast.showToast(
-            msg: result.name == 'none' ? "No Internet" : 'Internet',
-            webPosition: "right",
-            webShowClose: true,
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.TOP,
-            backgroundColor: result.name == 'none' ? Colors.red : Colors.green,
-            textColor: Colors.white,
-            fontSize: 16.0);
+      timer = Timer.periodic(const Duration(seconds: locationUpdateInterval),
+          (timer) async {
+        print("THE CURRENT POSITION IS $position");
+        if (result.name != 'none') {
+          RestClient().post('user/saveLatLong', session, position?.latitude,
+              position?.longitude, userId);
+        } else {
+          Fluttertoast.showToast(
+              msg: result.name == 'none' ? "No Internet" : 'Internet',
+              webPosition: "right",
+              webShowClose: true,
+              toastLength: Toast.LENGTH_LONG,
+              gravity: ToastGravity.TOP,
+              backgroundColor:
+                  result.name == 'none' ? Colors.red : Colors.green,
+              textColor: Colors.white,
+              fontSize: 16.0);
+        }
+      });
+    }).onError((e) {
+      if (Platform.isAndroid) {
+        FlutterBackgroundService().invoke('stopService');
       }
+      debugPrint("THE ERROR IN THE SERVICE $e");
     });
-  }).onError((e) {
-    if (Platform.isAndroid) {
-      FlutterBackgroundService().invoke('stopService');
+  } else {
+    if (timer != null) {
+      timer.cancel();
+      timer = null;
     }
-    debugPrint("THE ERROR IN THE SERVICE $e");
-  });
+  }
 }
 
 void showToast(String message) {
