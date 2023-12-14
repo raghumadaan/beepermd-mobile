@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_udid/flutter_udid.dart';
 import 'package:http/http.dart' as http;
 
 // const BASE_URL_BACKEND = 'http://54.163.228.123/app/'; //STAG_1
@@ -16,8 +17,13 @@ class RestClient {
       "Cookie": "JSESSIONID=$sessionID",
       "Content-Type": "application/json"
     };
-    var body =
-        jsonEncode({"userId": docId, "latitude": lat, "longitude": long});
+    String udid = await FlutterUdid.udid;
+    var body = jsonEncode({
+      "userId": docId,
+      "latitude": lat,
+      "longitude": long,
+      "deviceId": udid
+    });
     var url = Uri.parse(BASE_URL_BACKEND + apiName);
     final response =
         await http.Client().post(url, headers: headers, body: body);
