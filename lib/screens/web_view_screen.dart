@@ -167,10 +167,17 @@ class _WebViewContainerState extends State<WebViewContainer>
                             useOnDownloadStart: true,
                             disableDefaultErrorPage: true),
                         pullToRefreshController: pullToRefreshController,
-                        initialUrlRequest:
-                            URLRequest(url: WebUri('${BASE_URL_WEB}patient')),
+                        initialUrlRequest: URLRequest(url: WebUri(initialUrl)),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
+                        },
+                        onLoadStart: (controller, url) async {
+                          if (url?.rawValue ==
+                              "${BASE_URL_BACKEND}login/authm") {
+                            final SharedPreferences prefs = await _prefs;
+                            prefs.clear();
+                            BackgroundService().stopService();
+                          }
                         },
                         onLoadStop: (controller, url) async {
                           final SharedPreferences prefs = await _prefs;
@@ -259,8 +266,6 @@ class _WebViewContainerState extends State<WebViewContainer>
                             String sessionId = await getCookie(url, "patient");
                             print("debugger in else if condition $sessionId");
                             await _handleStoragePermission();
-                          } else {
-                            BackgroundService().stopService();
                           }
                         },
                         onDownloadStartRequest: (controller, url) async {
