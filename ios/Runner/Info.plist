@@ -45,16 +45,21 @@
 	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>To capture document photo please grant camera access</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-    <string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
-	<key>NSLocationUsageDescription</key>
-    <string>Older devices need location.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-    <string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
+	<string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Older devices need location.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BeeperMD app tracks provider (Home care taker) user’s location to share the estimated arrival time with the patients, it helps patients to get real time updates through BeeperMD support team.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

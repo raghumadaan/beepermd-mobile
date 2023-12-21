@@ -34,7 +34,10 @@ class BackgroundService {
         onBackground: onIosBackground,
       ),
     );
-    service.startService();
+    var isRunning = await service.isRunning();
+    if (!isRunning) {
+      service.startService();
+    }
   }
 
   @pragma('vm:entry-point')
@@ -149,7 +152,6 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
   if (isLoggedIn == true) {
     Geolocator.getPositionStream(locationSettings: locationSettings)
         .listen((Position? position) {
-      print("THE CURRENT POSITION IS $position");
       timer = Timer.periodic(const Duration(seconds: locationUpdateInterval),
           (timer) async {
         print("THE CURRENT POSITION IS $position");

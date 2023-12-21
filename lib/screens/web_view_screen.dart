@@ -135,7 +135,6 @@ class _WebViewContainerState extends State<WebViewContainer>
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-
     if (providerCookie!.isNotEmpty) {
       initialUrl = '${BASE_URL_WEB}app/schedule';
     } else if (patientCookie!.isNotEmpty) {
@@ -181,6 +180,8 @@ class _WebViewContainerState extends State<WebViewContainer>
                               .listen(_updateConnectionStatus);
 
                           if (url?.rawValue == "${BASE_URL_WEB}app/schedule") {
+                            await _handleLocationPerm();
+                            await _handleCameraPermission();
                             prefs.remove("patient");
                             patientCookie = '';
                             String sessionId = await getCookie(url, "provider");
@@ -197,8 +198,14 @@ class _WebViewContainerState extends State<WebViewContainer>
                               userIdForMobileApp = data!.nodes[0];
                               await saveUserIDinPrefs(userIdForMobileApp.data);
                             }
-                            await _handleLocationPerm();
-                            await _handleCameraPermission();
+                            var whenInUseStatus =
+                                await Permission.locationWhenInUse.status;
+                            var alwaysStatus =
+                                await Permission.locationAlways.status;
+                            if (whenInUseStatus.isGranted ||
+                                alwaysStatus.isGranted) {
+                              initBackgroundService();
+                            }
                           } else if (url?.rawValue ==
                               "${BASE_URL_WEB}patient/#/home") {
                             prefs.remove("provider");
@@ -322,9 +329,9 @@ class _WebViewContainerState extends State<WebViewContainer>
       if (status.isGranted) {
         var status = await Permission.locationAlways.request();
         if (status.isGranted) {
-          initBackgroundService();
+          print("Location permission always granted");
         } else {
-          initBackgroundService();
+          print("Location permission when in use granted");
         }
       } else if (status.isPermanentlyDenied) {
         //The user deny the permission
@@ -343,13 +350,13 @@ class _WebViewContainerState extends State<WebViewContainer>
       if (!status.isGranted) {
         var status = await Permission.locationAlways.request();
         if (status.isGranted) {
-          initBackgroundService();
+          print("Location permission always granted");
         } else {
-          initBackgroundService();
+          print("Location permission when in use granted");
         }
       } else {
         //previously available, do some stuff or nothing
-        initBackgroundService();
+        print("Location permission always granted");
       }
     }
   }
