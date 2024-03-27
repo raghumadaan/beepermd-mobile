@@ -14,6 +14,7 @@ import 'package:flutter_background_service_android/flutter_background_service_an
 import 'package:flutter_background_service_ios/flutter_background_service_ios.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BackgroundService {
@@ -145,37 +146,45 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
     return;
   }
 
-  const LocationSettings locationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 100,
-  );
   if (isLoggedIn == true) {
-    Geolocator.getPositionStream(locationSettings: locationSettings)
-        .listen((Position? position) {
-      timer = Timer.periodic(const Duration(seconds: locationUpdateInterval),
-          (timer) async {
-        print("THE CURRENT POSITION IS $position");
-        if (result.name != 'none') {
-          RestClient().post('user/saveLatLong', session, position?.latitude,
-              position?.longitude, userId);
-        } else {
-          Fluttertoast.showToast(
-              msg: result.name == 'none' ? "No Internet" : 'Internet',
-              webPosition: "right",
-              webShowClose: true,
-              toastLength: Toast.LENGTH_LONG,
-              gravity: ToastGravity.TOP,
-              backgroundColor:
-                  result.name == 'none' ? Colors.red : Colors.green,
-              textColor: Colors.white,
-              fontSize: 16.0);
+    timer = Timer.periodic(const Duration(seconds: locationUpdateInterval),
+        (timer) async {
+      if (result.name != 'none') {
+        try {
+          var position = await Geolocator.getCurrentPosition(
+                  desiredAccuracy: LocationAccuracy.high)
+              .onError((error, stackTrace) {
+            if (Platform.isAndroid) {
+              FlutterBackgroundService().invoke('stopService');
+            }
+            debugPrint("THE ERROR IN THE SERVICE $error");
+            throw error as Object;
+          });
+          print("THE CURRENT POSITION IS $position");
+
+          if (!position.isBlank!) {
+            RestClient().post(
+              'user/saveLatLong',
+              session,
+              position.latitude,
+              position.longitude,
+              userId,
+            );
+          }
+        } catch (e) {
+          print("Error fetching the location: $e");
         }
-      });
-    }).onError((e) {
-      if (Platform.isAndroid) {
-        FlutterBackgroundService().invoke('stopService');
+      } else {
+        Fluttertoast.showToast(
+            msg: result.name == 'none' ? "No Internet" : 'Internet',
+            webPosition: "right",
+            webShowClose: true,
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.TOP,
+            backgroundColor: result.name == 'none' ? Colors.red : Colors.green,
+            textColor: Colors.white,
+            fontSize: 16.0);
       }
-      debugPrint("THE ERROR IN THE SERVICE $e");
     });
   } else {
     if (timer != null) {
