@@ -47,7 +47,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   final CookieManager _cookieManager = CookieManager.instance();
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   static const snackBarDuration = Duration(seconds: 3);
-  var initialUrl = '${BASE_URL_WEB}patient';
+  var initialUrl = BASE_URL_WEB;
   final snackBar = const SnackBar(
     content: Text('Press back again to leave'),
     duration: snackBarDuration,
