@@ -22,7 +22,7 @@ const BASE_URL = 'https://beepermd.com/'; //PROD
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-class WebViewContainer extends StatefulWidget {
+class WebViewContainer extends StatefulWidget with WidgetsBindingObserver {
   const WebViewContainer({super.key});
 
   @override
@@ -67,12 +67,28 @@ class _WebViewContainerState extends State<WebViewContainer>
   void dispose() {
     print("called dispose and closed background service");
     BackgroundService().stopService();
+    WidgetsBinding.instance?.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      await clearWebViewCache();
+    }
+  }
+
+  Future<void> clearWebViewCache() async {
+    _webViewController?.clearCache();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance?.addObserver(this);
     initConnectivity();
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
@@ -147,21 +163,23 @@ class _WebViewContainerState extends State<WebViewContainer>
                           final prefs = await SharedPreferences.getInstance();
                           var sessionID = prefs.getString('Cookie1');
                           var header = {"Cookie": "JSESSIONID=$sessionID"};
-
                           if (url.rawValue == "${BASE_URL}app/schedule") {
-                            final response = await http.Client()
-                                .get(Uri.parse(url.rawValue), headers: header);
-                            dom.Document document =
-                                htmlparser.parse(response.body);
-                            var data =
-                                document.getElementById('userIdForMobileApp');
-                            if (data?.attributes
-                                    .containsValue('userIdForMobileApp') ??
-                                false) {
-                              userIdForMobileApp =
-                                  data!.attributes['data-value'];
-                              saveUserIDinPrefs(userIdForMobileApp);
-                            }
+                            try {
+                              final response = await http.Client().get(
+                                  Uri.parse(url.rawValue),
+                                  headers: header);
+                              dom.Document document =
+                                  htmlparser.parse(response.body);
+                              var data =
+                                  document.getElementById('userIdForMobileApp');
+                              if (data?.attributes
+                                      .containsValue('userIdForMobileApp') ??
+                                  false) {
+                                userIdForMobileApp =
+                                    data!.attributes['data-value'];
+                                saveUserIDinPrefs(userIdForMobileApp);
+                              }
+                            } catch (_) {}
                             await _handleLocationPerm();
                             await _handleCameraPermission();
                             if (Platform.isAndroid) {
@@ -174,7 +192,6 @@ class _WebViewContainerState extends State<WebViewContainer>
                                 BackgroundService().initializeService();
                               }
                             } else if (Platform.isIOS) {
-
                               getCurrentLocation();
                             }
                           } else {

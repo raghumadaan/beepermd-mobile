@@ -144,14 +144,15 @@ Future<void> getCurrentLocation() async {
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
   );
-  Geolocator.getPositionStream(locationSettings: locationSettings)
-      .listen((Position? position) {
-    print("THE CURRENT POSITION IS $position");
-    Timer.periodic(const Duration(seconds: 30), (timer) async {
-      print("THE CURRENT POSITION IS $position");
+
+  StreamSubscription<Position>? positionStream;
+  try {
+    positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .listen((Position position) async {
       if (result.name != 'none') {
-        RestClient().post('user/saveLatLong', session, position?.latitude,
-            position?.longitude, userId);
+        await RestClient().post('user/saveLatLong', session, position.latitude,
+            position.longitude, userId);
       } else {
         Fluttertoast.showToast(
             msg: result.name == 'none' ? "No Internet" : 'Internet',
@@ -164,15 +165,18 @@ Future<void> getCurrentLocation() async {
             fontSize: 16.0);
       }
     });
-  }).onError((e) {
+  } catch (e) {
+    debugPrint("THE ERROR IN THE SERVICE $e");
+    // Optionally handle other errors here (e.g., location permissions)
+  } finally {
+    positionStream?.cancel(); // Ensure stream is canceled on success/error
     if (Platform.isAndroid) {
       FlutterBackgroundService().invoke('stopService');
     }
-    debugPrint("THE ERROR IN THE SERVICE $e");
-  });
+  }
 }
 
-void showToast(String message){
+void showToast(String message) {
   Fluttertoast.showToast(
       msg: message,
       webPosition: "right",
