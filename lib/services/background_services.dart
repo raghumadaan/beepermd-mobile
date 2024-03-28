@@ -164,7 +164,7 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
 
           if (!position.isBlank!) {
             RestClient().post(
-              'user/saveLatLong',
+              'user/saveLatLong2',
               session,
               position.latitude,
               position.longitude,
