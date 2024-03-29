@@ -128,52 +128,56 @@ class BackgroundService {
 
 Future<void> getCurrentLocation() async {
   final prefs = await SharedPreferences.getInstance();
-  var session = prefs.get('Cookie1');
-  var userId = prefs.get('userID');
+  var session = prefs.getString('Cookie1');
+  var userId = prefs.getString('userID');
 
-  Connectivity _connectivity = Connectivity();
-  ConnectivityResult result;
-  try {
-    result = await _connectivity.checkConnectivity();
-  } on PlatformException catch (e) {
-    developer.log('Couldn\'t check connectivity status', error: e);
-    return;
+  // Function to send location to the server
+  void sendLocation(Position position) async {
+    await RestClient().post('user/saveLatLong', session, position.latitude,
+        position.longitude, userId);
   }
 
-  const LocationSettings locationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 100,
-  );
-
-  StreamSubscription<Position>? positionStream;
-  try {
-    positionStream =
-        Geolocator.getPositionStream(locationSettings: locationSettings)
-            .listen((Position position) async {
-      if (result.name != 'none') {
-        await RestClient().post('user/saveLatLong', session, position.latitude,
-            position.longitude, userId);
+  // Function to handle location updates
+  void handleLocationUpdate(Position position) {
+    print('update function called');
+    Connectivity().checkConnectivity().then((result) {
+      if (result != ConnectivityResult.none) {
+        sendLocation(position);
       } else {
         Fluttertoast.showToast(
-            msg: result.name == 'none' ? "No Internet" : 'Internet',
-            webPosition: "right",
-            webShowClose: true,
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.TOP,
-            backgroundColor: result.name == 'none' ? Colors.red : Colors.green,
-            textColor: Colors.white,
-            fontSize: 16.0);
+          msg: "No Internet",
+          webPosition: "right",
+          webShowClose: true,
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.TOP,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       }
     });
-  } catch (e) {
-    debugPrint("THE ERROR IN THE SERVICE $e");
-    // Optionally handle other errors here (e.g., location permissions)
-  } finally {
-    positionStream?.cancel(); // Ensure stream is canceled on success/error
-    if (Platform.isAndroid) {
-      FlutterBackgroundService().invoke('stopService');
-    }
   }
+
+  // Timer for sending location every 5 minutes
+  Timer.periodic(const Duration(minutes: 5), (timer) async {
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    handleLocationUpdate(position);
+  });
+
+  // Stream for continuous location updates
+  StreamSubscription<Position> positionStream;
+  positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    distanceFilter: 100,
+  ) // 10 meters distance filter
+      ).listen((Position position) {
+    handleLocationUpdate(position);
+  });
+
+  // Cancel the stream when the function ends
+  positionStream.cancel();
 }
 
 void showToast(String message) {

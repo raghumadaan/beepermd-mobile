@@ -4,7 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 
 class RestClient {
-  var BaseURl = "http://54205.107.161/app/"; //"http://54.163.228.123/app/";
+  var BaseURl = "http://54.205.107.161/app/"; //"http://54.163.228.123/app/";
   Future<http.Response> post(apiName, sessionID, lat, long, docId) async {
     var headers = {
       "Cookie": "JSESSIONID=$sessionID",
