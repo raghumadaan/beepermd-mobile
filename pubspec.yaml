@@ -55,13 +55,20 @@ dependencies:
       ref: fix-xcode-17
   shared_preferences: ^2.0.15
   fluttertoast: ^8.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  hive_generator: ^2.0.1
+  firebase_messaging: ^14.8.0
+  firebase_core: ^2.3.0
+  app_links: ^4.0.1
+
 
 dev_dependencies:
-
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^2.0.0
+  build_runner: ^2.4.9
+
 
 
 flutter:

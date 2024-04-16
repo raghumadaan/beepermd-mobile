@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "178494307208",
+    "firebase_url": "https://beepermd-155807.firebaseio.com",
+    "project_id": "beepermd-155807",
+    "storage_bucket": "beepermd-155807.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:178494307208:android:0cb8e92afba4ff6a",
+        "android_client_info": {
+          "package_name": "com.beepermd.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "178494307208-t6ok62htd20tenrgq81fc4pv3oi8pfhm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmfeXhzVGobihSb_-iN9WFcA3zsfvl3z0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "178494307208-t6ok62htd20tenrgq81fc4pv3oi8pfhm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

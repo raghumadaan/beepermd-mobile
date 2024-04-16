@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:beepermd/core/data/remote/rest_client.dart';
 import 'package:beepermd/services/background_services.dart';
+import 'package:beepermd/services/firebase_notification_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_udid/flutter_udid.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as htmlparser;
@@ -42,6 +45,8 @@ class _WebViewContainerState extends State<WebViewContainer>
   String? patientCookie = '';
   String? providerCookie = '';
   String? loggedInUserId = '';
+  bool canGoBack = false;
+  bool isAppBarVisible = false;
 
   DateTime? backButtonPressTime;
   final CookieManager _cookieManager = CookieManager.instance();
@@ -76,6 +81,15 @@ class _WebViewContainerState extends State<WebViewContainer>
   getProviderCookie() async {
     final SharedPreferences prefs = await _prefs;
     providerCookie = prefs.getString('provider') ?? '';
+  }
+
+  getBodyParms(String userID) async {
+    return jsonEncode({
+      "userId": userID,
+      "deviceId": await FlutterUdid.udid,
+      "fcmToken": await FirebaseNotificationService.getFCMToken(),
+      "deviceType": Platform.operatingSystem,
+    });
   }
 
   @override
@@ -132,6 +146,14 @@ class _WebViewContainerState extends State<WebViewContainer>
     return sessionId;
   }
 
+  Future<Widget?> getAppBar() async {
+    return await _webViewController!.canGoBack()
+        ? AppBar(
+            automaticallyImplyLeading: true,
+          )
+        : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -142,6 +164,23 @@ class _WebViewContainerState extends State<WebViewContainer>
     }
 
     return Scaffold(
+      appBar: canGoBack
+          ? PreferredSize(
+              preferredSize: Size(size.width, kToolbarHeight),
+              child: SafeArea(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: IconButton(
+                          onPressed: () => handleWillPop(context),
+                          icon: const Icon(Icons.navigate_before)),
+                    )
+                  ],
+                ),
+              ))
+          : null,
       body: Stack(
         children: [
           Builder(builder: (context) {
@@ -150,8 +189,10 @@ class _WebViewContainerState extends State<WebViewContainer>
               child: _connectionStatus.name != "none"
                   ? SafeArea(
                       child: InAppWebView(
+                        headlessWebView: HeadlessInAppWebView(),
                         key: webViewKey,
                         initialSettings: InAppWebViewSettings(
+                            allowsBackForwardNavigationGestures: true,
                             supportZoom: false,
                             useHybridComposition: true,
                             disableDefaultErrorPage: true),
@@ -159,8 +200,33 @@ class _WebViewContainerState extends State<WebViewContainer>
                         initialUrlRequest: URLRequest(url: WebUri(initialUrl)),
                         onWebViewCreated: (InAppWebViewController controller) {
                           _webViewController = controller;
+                          controller.addJavaScriptHandler(
+                              handlerName: 'onLoad',
+                              callback: (args) {
+                                setState(() {
+                                  isAppBarVisible = args[
+                                      0]; // boolean value from the JavaScript
+                                });
+                              });
                         },
+                        // onNavigationResponse:
+                        //     (controller, navigationResponse) async {
+                        //   navigationResponse.isForMainFrame
+                        //       ? canGoBack = false
+                        //       : isPageValid = true;
+
+                        //   return NavigationResponseAction.ALLOW;
+                        // },
                         onLoadStart: (controller, url) async {
+                          if (await controller.canGoBack()) {
+                            setState(() {
+                              canGoBack = true;
+                            });
+                          } else {
+                            setState(() {
+                              canGoBack = false;
+                            });
+                          }
                           if (url?.rawValue == "${BASE_URL_BACKEND}logout") {
                             final SharedPreferences prefs = await _prefs;
                             prefs.clear();
@@ -168,6 +234,11 @@ class _WebViewContainerState extends State<WebViewContainer>
                           }
                         },
                         onLoadStop: (controller, url) async {
+                          controller.evaluateJavascript(source: '''
+              window.addEventListener('popstate', function() {
+                window.flutter_inappwebview.callHandler('onLoad', true);
+              });
+            ''');
                           final SharedPreferences prefs = await _prefs;
                           setState(() {
                             isApiLoaded = false;
@@ -180,8 +251,12 @@ class _WebViewContainerState extends State<WebViewContainer>
                               .listen(_updateConnectionStatus);
 
                           if (url?.rawValue == "${BASE_URL_WEB}app/schedule") {
+                            setState(() {
+                              canGoBack = false;
+                            });
                             await _handleLocationPerm();
                             await _handleCameraPermission();
+
                             prefs.remove("patient");
                             patientCookie = '';
                             String sessionId = await getCookie(url, "provider");
@@ -198,6 +273,10 @@ class _WebViewContainerState extends State<WebViewContainer>
                               userIdForMobileApp = data!.nodes[0];
                               await saveUserIDinPrefs(userIdForMobileApp.data);
                             }
+
+                            // ******************************** //
+                            final body = await getBodyParms(userIdForMobileApp);
+                            await RestClient().postFCMToken(body);
                             var whenInUseStatus =
                                 await Permission.locationWhenInUse.status;
                             var alwaysStatus =
@@ -208,6 +287,9 @@ class _WebViewContainerState extends State<WebViewContainer>
                             }
                           } else if (url?.rawValue ==
                               "${BASE_URL_WEB}patient/#/home") {
+                            setState(() {
+                              canGoBack = true;
+                            });
                             prefs.remove("provider");
                             providerCookie = '';
                           }

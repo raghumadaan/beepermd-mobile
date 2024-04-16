@@ -4,7 +4,9 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:background_location/background_location.dart';
+import 'package:beepermd/core/data/remote/failed_request_manager.dart';
 import 'package:beepermd/core/data/remote/rest_client.dart';
+import 'package:beepermd/core/model/failed_request.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+const successStatusCodes = [200, 201];
 
 class BackgroundService {
   Future<void> initializeService() async {
@@ -45,6 +49,28 @@ class BackgroundService {
   Future<bool> onIosBackground(ServiceInstance service) async {
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
+
+    FailedRequestManager().getFailedRequests().then((value) async {
+      if (value.isNotEmpty) {
+        for (var request in value) {
+          try {
+            final response = await RestClient().post(
+              request.apiName,
+              request.sessionID,
+              request.lat,
+              request.long,
+              request.deviceId,
+            );
+
+            if (successStatusCodes.contains(response.statusCode)) {
+              await FailedRequestManager().removeRequest(request);
+            }
+          } catch (e) {
+            print("Failed Request retry failed: $e");
+          }
+        }
+      }
+    });
     return true;
   }
 
@@ -163,13 +189,26 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
           print("THE CURRENT POSITION IS $position");
 
           if (!position.isBlank!) {
-            RestClient().post(
-              'user/saveLatLong2',
-              session,
-              position.latitude,
-              position.longitude,
-              userId,
-            );
+            try {
+              RestClient().post(
+                'user/saveLatLong2',
+                session,
+                position.latitude,
+                position.longitude,
+                userId,
+              );
+            } catch (e) {
+              FailedRequestManager().saveRequest(
+                FailedRequest(
+                  apiName: 'user/saveLatLong2',
+                  sessionID: "JSESSIONID=$session",
+                  lat: position.latitude,
+                  long: position.longitude,
+                  deviceId: userId.toString(),
+                  timestamp: DateTime.now(),
+                ),
+              );
+            }
           }
         } catch (e) {
           print("Error fetching the location: $e");
