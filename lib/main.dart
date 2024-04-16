@@ -7,6 +7,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'core/data/remote/failed_request_manager.dart';
 import 'services/firebase_notification_service.dart';
+import 'firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 const fetchBackground = "fetchBackground";
 
@@ -19,7 +21,7 @@ void main() async {
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     await InAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   FirebaseNotificationService.init();
 

@@ -59,6 +59,8 @@ class FirebaseNotificationService {
     });
 
     FirebaseMessaging.onBackgroundMessage(myBackgroundMessageHandler);
+
+    print(await getFCMToken());
   }
 
   static Future<void> _handleNotification(RemoteMessage message) async {
@@ -74,18 +76,18 @@ class FirebaseNotificationService {
     try {
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('notification_icon');
-      final DarwinInitializationSettings initializationSettingsDarwin =
+      const DarwinInitializationSettings initializationSettingsDarwin =
           DarwinInitializationSettings(
               onDidReceiveLocalNotification: onDidReceiveLocalNotification);
 
-      final InitializationSettings initializationSettings =
+      const InitializationSettings initializationSettings =
           InitializationSettings(
               android: initializationSettingsAndroid,
               iOS: initializationSettingsDarwin);
       await flutterLocalNotificationsPlugin.initialize(initializationSettings,
           onDidReceiveNotificationResponse: onDidReceiveNotificationResponse);
 
-      var iOSPlatformChannelSpecifics = DarwinNotificationDetails();
+      var iOSPlatformChannelSpecifics = const DarwinNotificationDetails();
       var platformChannelSpecifics = NotificationDetails(
           android: androidPlatformChannelSpecifics,
           iOS: iOSPlatformChannelSpecifics);

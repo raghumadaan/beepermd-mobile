@@ -45,6 +45,13 @@
             </intent-filter>
 
         </activity>
+
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/notification_icon"
+            />
+            
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -59,15 +66,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-
-        <!-- App Link sample -->
-        <intent-filter android:autoVerify="true">
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="http" android:host="www.beepermd.com" android:pathPrefix="/app/login" />
-            <data android:scheme="https" android:host="www.beepermd.com" android:pathPrefix="/app/login" />
-        </intent-filter>
     </application>
 </manifest>
