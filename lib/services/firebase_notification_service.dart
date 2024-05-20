@@ -1,9 +1,11 @@
 // ignore_for_file: unused_local_variable
 
 import 'dart:convert';
-
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
+import '../screens/web_view_screen.dart';
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -30,6 +32,14 @@ var androidPlatformChannelSpecifics = AndroidNotificationDetails(
 class FirebaseNotificationService {
   // get fcm token
   static Future<String?> getFCMToken() async {
+    final apnsToken = await _firebaseMessaging.getAPNSToken();
+    if (apnsToken == null) {
+      await Future<void>.delayed(
+        const Duration(
+          seconds: 3,
+        ),
+      );
+    }
     return await _firebaseMessaging.getToken();
   }
 
@@ -42,35 +52,75 @@ class FirebaseNotificationService {
         criticalAlert: false,
         provisional: false,
         sound: true);
-    if (settings.authorizationStatus == AuthorizationStatus.authorized)
-      print('User granted permission');
-    if (settings.authorizationStatus == AuthorizationStatus.provisional)
-      print('User granted provisional permission');
-    if (settings.authorizationStatus == AuthorizationStatus.denied)
-      print('User declined or has not accepted permission');
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      debugPrint('User granted permission');
+    }
+    if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      debugPrint('User granted provisional permission');
+    }
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      debugPrint('User declined or has not accepted permission');
+    }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('onMessage: $message');
+      debugPrint('onMessage: $message');
       _handleNotification(message);
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('onMessageOpenedApp: ${message.data.toString()}');
+      debugPrint('onMessageOpenedApp: ${message.data.toString()}');
+
+      Get.to(WebViewContainer(
+        url: message.data['url'],
+      ));
     });
 
+    FirebaseMessaging.instance.getInitialMessage().then((value) {
+      if (value != null) {
+        _handleNotification(value);
+      }
+    });
     FirebaseMessaging.onBackgroundMessage(myBackgroundMessageHandler);
 
-    print(await getFCMToken());
+    FirebaseMessaging.instance.subscribeToTopic('testData');
+  }
+
+  static generateNotification(id, title, body, message,
+      NotificationDetails notificationDetails, payload) async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('notification_icon');
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+            onDidReceiveLocalNotification: onDidReceiveLocalNotification);
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsDarwin);
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings,
+        onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+        onDidReceiveBackgroundNotificationResponse:
+            onDidReceiveBackgroundNotificationResponse);
+
+    var iOSPlatformChannelSpecifics = const DarwinNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        message.hashCode, title, body, platformChannelSpecifics,
+        payload: jsonEncode(message.data));
   }
 
   static Future<void> _handleNotification(RemoteMessage message) async {
-    print('handleNotification, ${message.data.toString()}');
+    debugPrint('handleNotification, ${message.data.toString()}');
     String title = message.notification?.title ?? '';
     String body = message.notification?.body ?? '';
+    String dataUrl = '';
 
     if (message.data.isNotEmpty) {
       title = title == '' ? message.data['title'] : title;
       body = body == '' ? message.data['body'] : body;
+      dataUrl = message.data['url'];
     }
 
     try {
@@ -85,7 +135,9 @@ class FirebaseNotificationService {
               android: initializationSettingsAndroid,
               iOS: initializationSettingsDarwin);
       await flutterLocalNotificationsPlugin.initialize(initializationSettings,
-          onDidReceiveNotificationResponse: onDidReceiveNotificationResponse);
+          onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+          onDidReceiveBackgroundNotificationResponse:
+              onDidReceiveBackgroundNotificationResponse);
 
       var iOSPlatformChannelSpecifics = const DarwinNotificationDetails();
       var platformChannelSpecifics = NotificationDetails(
@@ -95,7 +147,7 @@ class FirebaseNotificationService {
           message.hashCode, title, body, platformChannelSpecifics,
           payload: jsonEncode(message.data));
     } catch (e) {
-      print('myMessageHandlerERROR, ${e.toString()}');
+      debugPrint('myMessageHandlerERROR, ${e.toString()}');
     }
   }
 }
@@ -106,11 +158,27 @@ Future<void> onDidReceiveNotificationResponse(
   if (payload == null) return;
 
   Map<String, dynamic> data = jsonDecode(payload);
+
+  Get.to(WebViewContainer(
+    url: data['url'],
+  ));
+}
+
+Future<void> onDidReceiveBackgroundNotificationResponse(
+    NotificationResponse notificationResponse) async {
+  final String? payload = notificationResponse.payload;
+  if (payload == null) return;
+
+  Map<String, dynamic> data = jsonDecode(payload);
+
+  Get.to(WebViewContainer(
+    url: data['url'],
+  ));
 }
 
 Future<void> onDidReceiveLocalNotification(
     int id, String? title, String? body, String? payload) async {
-  print('onDidReceiveLocalNotification, payload: $payload');
+  debugPrint('onDidReceiveLocalNotification, payload: $payload');
   if (payload == null) return;
 
   Map<String, dynamic> data = jsonDecode(payload);
@@ -118,7 +186,7 @@ Future<void> onDidReceiveLocalNotification(
 
 @pragma('vm:entry-point')
 Future<void> myBackgroundMessageHandler(RemoteMessage message) async {
-  print('myBackgroundMessageHandler, ${message.data.toString()}');
+  debugPrint('myBackgroundMessageHandler, ${message.data.toString()}');
 }
 
 didLocalNotificationLaunchApp() async {
@@ -126,7 +194,7 @@ didLocalNotificationLaunchApp() async {
       await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
 
   if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
-    print('didNotificationLaunchApp');
+    debugPrint('didNotificationLaunchApp');
     final String? payload =
         notificationAppLaunchDetails?.notificationResponse?.payload;
     if (payload == null) return;

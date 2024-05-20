@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:beepermd/core/data/remote/rest_client.dart';
@@ -21,7 +22,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 const fetchBackground = "fetchBackground";
 
 class WebViewContainer extends StatefulWidget {
-  const WebViewContainer({super.key});
+  final String? url;
+  const WebViewContainer({super.key, this.url});
 
   @override
   createState() => _WebViewContainerState();
@@ -84,19 +86,28 @@ class _WebViewContainerState extends State<WebViewContainer>
   }
 
   getBodyParms(String userID) async {
-    return jsonEncode({
+    var deviceId = await FlutterUdid.udid;
+    var fcmToken = await FirebaseNotificationService.getFCMToken();
+
+    return {
       "userId": userID,
-      "deviceId": await FlutterUdid.udid,
-      "fcmToken": await FirebaseNotificationService.getFCMToken(),
+      "deviceId": deviceId,
+      "fcmToken": fcmToken,
       "deviceType": Platform.operatingSystem,
-    });
+    };
   }
 
   @override
   void dispose() {
-    print("called dispose and closed background service");
+    debugPrint("called dispose and closed background service");
     BackgroundService().stopService();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    if (widget.url != null) initialUrl = widget.url!;
+    super.didChangeDependencies();
   }
 
   @override
@@ -157,35 +168,20 @@ class _WebViewContainerState extends State<WebViewContainer>
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    if (providerCookie!.isNotEmpty) {
+    if (widget.url != null) {
+      initialUrl = widget.url!;
+    } else if (providerCookie!.isNotEmpty) {
       initialUrl = '${BASE_URL_WEB}app/schedule';
     } else if (patientCookie!.isNotEmpty) {
       initialUrl = '${BASE_URL_WEB}patient/#/home';
     }
 
     return Scaffold(
-      appBar: canGoBack
-          ? PreferredSize(
-              preferredSize: Size(size.width, kToolbarHeight),
-              child: SafeArea(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: IconButton(
-                          onPressed: () => handleWillPop(context),
-                          icon: const Icon(Icons.navigate_before)),
-                    )
-                  ],
-                ),
-              ))
-          : null,
       body: Stack(
         children: [
           Builder(builder: (context) {
-            return WillPopScope(
-              onWillPop: () => handleWillPop(context),
+            return PopScope(
+              onPopInvoked: (_) => handleWillPop(context),
               child: _connectionStatus.name != "none"
                   ? SafeArea(
                       child: InAppWebView(
@@ -204,19 +200,10 @@ class _WebViewContainerState extends State<WebViewContainer>
                               handlerName: 'onLoad',
                               callback: (args) {
                                 setState(() {
-                                  isAppBarVisible = args[
-                                      0]; // boolean value from the JavaScript
+                                  isAppBarVisible = args[0];
                                 });
                               });
                         },
-                        // onNavigationResponse:
-                        //     (controller, navigationResponse) async {
-                        //   navigationResponse.isForMainFrame
-                        //       ? canGoBack = false
-                        //       : isPageValid = true;
-
-                        //   return NavigationResponseAction.ALLOW;
-                        // },
                         onLoadStart: (controller, url) async {
                           if (await controller.canGoBack()) {
                             setState(() {
@@ -234,11 +221,6 @@ class _WebViewContainerState extends State<WebViewContainer>
                           }
                         },
                         onLoadStop: (controller, url) async {
-                          controller.evaluateJavascript(source: '''
-              window.addEventListener('popstate', function() {
-                window.flutter_inappwebview.callHandler('onLoad', true);
-              });
-            ''');
                           final SharedPreferences prefs = await _prefs;
                           setState(() {
                             isApiLoaded = false;
@@ -261,22 +243,71 @@ class _WebViewContainerState extends State<WebViewContainer>
                             patientCookie = '';
                             String sessionId = await getCookie(url, "provider");
                             var header = {"Cookie": "JSESSIONID=$sessionId"};
-                            final response = await http.Client()
-                                .get(Uri.parse(url!.rawValue), headers: header);
-                            dom.Document document =
-                                htmlparser.parse(response.body);
-                            var data =
-                                document.getElementById('userIdForMobileApp');
-                            if (data?.attributes
-                                    .containsValue('userIdForMobileApp') ??
-                                false) {
-                              userIdForMobileApp = data!.nodes[0];
-                              await saveUserIDinPrefs(userIdForMobileApp.data);
+                            log(url!.rawValue);
+                            log(jsonEncode(header));
+                            // final response = await http.Client()
+                            //     .get(Uri.parse(url!.rawValue), headers: header);
+                            try {
+                              final response = await RestClient()
+                                  .getWithDioRedirects(url.rawValue, header);
+
+                              dom.Document document =
+                                  htmlparser.parse(response.data!);
+                              var data =
+                                  document.getElementById('userIdForMobileApp');
+                              await Future.delayed(Duration.zero);
+                              if (data?.attributes
+                                      .containsValue('userIdForMobileApp') ??
+                                  false) {
+                                userIdForMobileApp = data!.nodes[0];
+                                await saveUserIDinPrefs(
+                                    userIdForMobileApp.data);
+
+                                String udid = await FlutterUdid.udid;
+                                String? token =
+                                    await FirebaseNotificationService
+                                        .getFCMToken();
+
+                                await RestClient().postFCMToken(
+                                  userIdForMobileApp.data,
+                                  udid,
+                                  token ?? '',
+                                  sessionId,
+                                );
+                              }
+                            } catch (e) {
+                              debugPrint("Redirect error: $e");
+                              final response = await RestClient()
+                                  .getWithDioRedirects(url.rawValue, header);
+
+                              dom.Document document =
+                                  htmlparser.parse(response.data!);
+                              var data =
+                                  document.getElementById('userIdForMobileApp');
+                              await Future.delayed(Duration.zero);
+                              if (data?.attributes
+                                      .containsValue('userIdForMobileApp') ??
+                                  false) {
+                                userIdForMobileApp = data!.nodes[0];
+                                await saveUserIDinPrefs(
+                                    userIdForMobileApp.data);
+
+                                String udid = await FlutterUdid.udid;
+                                String? token =
+                                    await FirebaseNotificationService
+                                        .getFCMToken();
+
+                                await RestClient().postFCMToken(
+                                  userIdForMobileApp.data,
+                                  udid,
+                                  token ?? '',
+                                  sessionId,
+                                );
+                              }
                             }
 
                             // ******************************** //
-                            final body = await getBodyParms(userIdForMobileApp);
-                            await RestClient().postFCMToken(body);
+
                             var whenInUseStatus =
                                 await Permission.locationWhenInUse.status;
                             var alwaysStatus =
@@ -363,7 +394,7 @@ class _WebViewContainerState extends State<WebViewContainer>
         backButtonPressTime == null ||
             now.difference(backButtonPressTime!) > snackBarDuration;
     if (await _webViewController!.canGoBack()) {
-      _webViewController?.goBack();
+      _webViewController?.goBack().then((value) {});
       return false;
     } else if (backButtonHasNotBeenPressedOrSnackBarHasBeenClosed) {
       backButtonPressTime = now;
@@ -380,10 +411,10 @@ class _WebViewContainerState extends State<WebViewContainer>
       result = (await Permission.camera.request());
       if (result.isGranted) {
         // Either the permission was already granted before or the user just granted it.
-        print("Camera Permission is granted");
+        debugPrint("Camera Permission is granted");
         return true;
       } else {
-        print("Camera Permission is denied");
+        debugPrint("Camera Permission is denied");
         return false;
       }
     }
@@ -411,9 +442,9 @@ class _WebViewContainerState extends State<WebViewContainer>
       if (status.isGranted) {
         var status = await Permission.locationAlways.request();
         if (status.isGranted) {
-          print("Location permission always granted");
+          debugPrint("Location permission always granted");
         } else {
-          print("Location permission when in use granted");
+          debugPrint("Location permission when in use granted");
         }
       } else if (status.isPermanentlyDenied) {
         //The user deny the permission
@@ -432,20 +463,20 @@ class _WebViewContainerState extends State<WebViewContainer>
       if (!status.isGranted) {
         var status = await Permission.locationAlways.request();
         if (status.isGranted) {
-          print("Location permission always granted");
+          debugPrint("Location permission always granted");
         } else {
-          print("Location permission when in use granted");
+          debugPrint("Location permission when in use granted");
         }
       } else {
         //previously available, do some stuff or nothing
-        print("Location permission always granted");
+        debugPrint("Location permission always granted");
       }
     }
   }
 
   void initBackgroundService() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    print("Is location service enabled $serviceEnabled");
+    debugPrint("Is location service enabled $serviceEnabled");
 
     if (serviceEnabled == true) {
       BackgroundService().initializeService();
