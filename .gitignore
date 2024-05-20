@@ -47,3 +47,4 @@ CertificateSigningRequest.certSigningRequest
 AuthKey_SABC8YFS55.p8
 firebase.json
 android/app/google-services.json
+GoogleService-Info.plist
