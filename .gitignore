@@ -42,3 +42,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+firebase.json
+CertificateSigningRequest.certSigningRequest
+AuthKey_SABC8YFS55.p8
+firebase.json
