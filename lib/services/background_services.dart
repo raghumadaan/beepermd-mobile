@@ -4,7 +4,9 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:background_location/background_location.dart';
+import 'package:beepermd/core/data/remote/failed_request_manager.dart';
 import 'package:beepermd/core/data/remote/rest_client.dart';
+import 'package:beepermd/core/model/failed_request.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
@@ -12,19 +14,43 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_background_service_ios/flutter_background_service_ios.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const successStatusCodes = [200, 201];
+
 class BackgroundService {
   Future<void> initializeService() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'notificationChannelId', // id
+      'MY FOREGROUND SERVICE', // title
+      description:
+          'This channel is used for important notifications.', // description
+      importance: Importance.low, // importance must be at low or higher level
+    );
+
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
     final service = FlutterBackgroundService();
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
         autoStart: true,
         isForegroundMode: true,
+
+        notificationChannelId:
+            "notificationChannelId", // this must match with notification channel you created above.
+        initialNotificationTitle: 'AWESOME SERVICE',
+        initialNotificationContent: 'Initializing',
       ),
       iosConfiguration: IosConfiguration(
         // auto start service
@@ -43,13 +69,41 @@ class BackgroundService {
 
   @pragma('vm:entry-point')
   Future<bool> onIosBackground(ServiceInstance service) async {
+    await FailedRequestManager()
+        .initialize(); // Call initialize if not already done
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
+
+    FailedRequestManager().getFailedRequests().then((value) async {
+      if (value.isNotEmpty) {
+        for (var request in value) {
+          try {
+            final response = await RestClient().post(
+              request.apiName,
+              request.sessionID,
+              request.lat,
+              request.long,
+              request.deviceId,
+              request.timestamp,
+            );
+
+            if (successStatusCodes.contains(response!.statusCode)) {
+              debugPrint("posted failed request: ${request.timestamp}");
+              await FailedRequestManager().removeRequest(request);
+            }
+          } catch (e) {
+            debugPrint("Failed Request retry failed: $e");
+          }
+        }
+      }
+    });
     return true;
   }
 
   @pragma('vm:entry-point')
   static void onStart(ServiceInstance service) async {
+    await FailedRequestManager()
+        .initialize(); // Call initialize if not already done
     service.invoke('setAsBackground');
     DartPluginRegistrant.ensureInitialized();
 
@@ -93,6 +147,31 @@ class BackgroundService {
         // print('Latitude: $latitude, Longitude : $longitude ');
       }
     }
+
+    FailedRequestManager().getFailedRequests().then((value) async {
+      if (value.isNotEmpty) {
+        for (var request in value) {
+          try {
+            final response = await RestClient().post(
+              request.apiName,
+              request.sessionID,
+              request.lat,
+              request.long,
+              request.deviceId,
+              request.timestamp,
+            );
+
+            if (successStatusCodes.contains(response!.statusCode)) {
+              debugPrint("posted failed request: ${request.timestamp}");
+              await FailedRequestManager().removeRequest(request);
+            }
+          } catch (e) {
+            debugPrint("Failed Request retry failed: $e");
+          }
+        }
+      }
+    });
+
     await BackgroundLocation.setAndroidConfiguration(1000);
     await BackgroundLocation.startLocationService();
 
@@ -124,7 +203,7 @@ class BackgroundService {
     var isRunning = await service.isRunning();
     if (isRunning) {
       service.invoke("stopService");
-      print("Logging Out");
+      debugPrint("Logging Out");
     } else {
       // service.startService();
     }
@@ -132,6 +211,7 @@ class BackgroundService {
 }
 
 Future<void> getCurrentLocation(bool isLoggedIn) async {
+  FailedRequestManager().clearAllRequests();
   final prefs = await SharedPreferences.getInstance();
   var session = prefs.get('provider');
   var userId = prefs.get('userID');
@@ -160,19 +240,32 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
             debugPrint("THE ERROR IN THE SERVICE $error");
             throw error as Object;
           });
-          print("THE CURRENT POSITION IS $position");
+          debugPrint("THE CURRENT POSITION IS $position");
 
           if (!position.isBlank!) {
-            RestClient().post(
-              'user/saveLatLong2',
-              session,
-              position.latitude,
-              position.longitude,
-              userId,
-            );
+            try {
+              RestClient().post(
+                'user/saveLatLong2',
+                session,
+                position.latitude,
+                position.longitude,
+                userId,
+              );
+            } catch (e) {
+              FailedRequestManager().saveRequest(
+                FailedRequest(
+                  apiName: 'user/saveLatLong2',
+                  sessionID: "$session",
+                  lat: position.latitude,
+                  long: position.longitude,
+                  deviceId: userId.toString(),
+                  timestamp: DateTime.now(),
+                ),
+              );
+            }
           }
         } catch (e) {
-          print("Error fetching the location: $e");
+          debugPrint("Error fetching the location: $e");
         }
       } else {
         Fluttertoast.showToast(
