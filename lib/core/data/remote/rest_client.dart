@@ -12,10 +12,12 @@ import 'failed_request_manager.dart';
 
 // const BASE_URL_BACKEND = 'http://54.163.228.123/app/'; //STAG_1
 // const BASE_URL_BACKEND = 'http://54.205.107.161/app/'; //STAG_2
+// const BASE_URL_BACKEND = 'https://uat.beepermd.com/app/'; //UAT
 const BASE_URL_BACKEND = 'https://beepermd.com/app/'; //PROD
 
 // const BASE_URL_WEB = 'http://54.163.228.123/'; //STAG_1
 // const BASE_URL_WEB = 'http://54.205.107.161/'; //STAG_2
+// const BASE_URL_WEB = 'https://uat.beepermd.com/'; //UAT
 const BASE_URL_WEB = 'https://beepermd.com/'; //PROD
 
 class RestClient {

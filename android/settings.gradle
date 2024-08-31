@@ -1,4 +1,17 @@
+
+
 include ':app'
+
+include ":app", ":flutter_inappwebview_android"
+gradle.beforeProject { project ->
+    if (project.name == "flutter_inappwebview_android") {
+        project.afterEvaluate {
+            if (project.hasProperty("android")) {
+                project.android.buildTypes.release.minifyEnabled = false
+            }
+        }
+    }
+}
 
 def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
 def properties = new Properties()

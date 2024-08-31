@@ -220,7 +220,7 @@ Future<void> getCurrentLocation(bool isLoggedIn) async {
   ConnectivityResult result;
   Timer? timer;
   try {
-    result = await connectivity.checkConnectivity();
+    result = (await connectivity.checkConnectivity()) as ConnectivityResult;
   } on PlatformException catch (e) {
     developer.log('Couldn\'t check connectivity status', error: e);
     return;

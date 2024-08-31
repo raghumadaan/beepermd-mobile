@@ -36,7 +36,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   InAppWebViewController? _webViewController;
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
   final Connectivity _connectivity = Connectivity();
-  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   bool isVisible = false;
   bool isLoading = false;
@@ -484,7 +484,7 @@ class _WebViewContainerState extends State<WebViewContainer>
   }
 
   Future<void> initConnectivity() async {
-    ConnectivityResult result;
+    List<ConnectivityResult> result;
     try {
       result = await _connectivity.checkConnectivity();
       setState(() {
@@ -510,9 +510,9 @@ class _WebViewContainerState extends State<WebViewContainer>
     return _updateConnectionStatus(result);
   }
 
-  Future<void> _updateConnectionStatus(ConnectivityResult result) async {
+  Future<void> _updateConnectionStatus(List<ConnectivityResult> result) async {
     setState(() {
-      _connectionStatus = result;
+      _connectionStatus = result[0];
       if (_connectionStatus.name == 'none') {
       } else {
         // BackgroundService().initializeService();

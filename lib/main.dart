@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'core/data/remote/failed_request_manager.dart';
-import 'services/firebase_notification_service.dart';
 import 'firebase_options.dart';
+import 'services/firebase_notification_service.dart';
 
 const fetchBackground = "fetchBackground";
 
@@ -21,7 +20,8 @@ void main() async {
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     await InAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+      name: 'beepermd', options: DefaultFirebaseOptions.currentPlatform);
 
   await Future.delayed(const Duration(seconds: 1));
 
